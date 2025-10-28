@@ -26,7 +26,7 @@ if __name__ == "__main__":
 
         print(" LLM: mapeando tripletas crudas → Cypher…")
         t0 = time.time()
-        cypher_script = cypher_from_triplets(RAW_TRIPLES_DEMO3)
+        cypher_script = cypher_from_triplets(RAW_TRIPLES_DEMO)
         print("   ✅ Cypher generado", _elapsed_str(t0))
 
         print("─── Cypher generado ───\n", cypher_script)

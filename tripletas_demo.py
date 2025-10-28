@@ -76,8 +76,9 @@ RAW_TRIPLES_DEMO2: List[Tuple[str, str, str]] = [
     ("visitar padres", "frecuencia", "quincenal"),
     
 ]
+#cambiar diaramente por semananal mente y comentar reseteo de bd
 RAW_TRIPLES_DEMO3: List[Tuple[str, str, str]] = [
     ("Ana García", "conoce", "Pedro Sánchez"),
-    ("Ana García", "tiene", "problemas para dormir"),
-    ("problemas para dormir", "frecuencia", "varias_por_semana"),
+    #("Ana García", "tiene", "problemas para dormir"),
+    ("problemas para dormir", "frecuencia", "diariamente"),
 ]
