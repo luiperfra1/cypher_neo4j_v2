@@ -11,11 +11,11 @@ RAW_TRIPLES_DEMO: List[Tuple[str, str, str]] = [
 
     # ---- Actividad ----
     ("Jose Luis", "realiza", "correr"),
-    #("correr", "categoria", "fisica"),
+    ("correr", "categoria", "fisica"),
     ("correr", "frecuencia", "semanal"),
 
     ("Jose Luis", "realiza", "ducharse"),
-    #("ducharse", "categoria", "adl_higiene"),
+    ("ducharse", "categoria", "adl_higiene"),
 
     # ---- Sintoma ----
     ("Jose Luis", "padece", "insomnio"),

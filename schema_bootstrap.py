@@ -11,10 +11,10 @@ from neo4j_client import Neo4jClient
 # Claves naturales por id
 CONSTRAINTS = [
     #UNICIDAD
-    #"CREATE CONSTRAINT persona_id IF NOT EXISTS FOR (n:Persona) REQUIRE n.user_id IS UNIQUE",
-    #"CREATE CONSTRAINT sintoma_id IF NOT EXISTS FOR (n:Sintoma) REQUIRE n.sintoma_id IS UNIQUE",
-    #"CREATE CONSTRAINT actividad_id IF NOT EXISTS FOR (n:Actividad) REQUIRE n.actividad_id IS UNIQUE",
-    #"CREATE CONSTRAINT medicacion_id IF NOT EXISTS FOR (n:Medicacion) REQUIRE n.medicacion_id IS UNIQUE",
+    "CREATE CONSTRAINT persona_id IF NOT EXISTS FOR (n:Persona) REQUIRE n.user_id IS UNIQUE",
+    "CREATE CONSTRAINT sintoma_id IF NOT EXISTS FOR (n:Sintoma) REQUIRE n.sintoma_id IS UNIQUE",
+    "CREATE CONSTRAINT actividad_id IF NOT EXISTS FOR (n:Actividad) REQUIRE n.actividad_id IS UNIQUE",
+    "CREATE CONSTRAINT medicacion_id IF NOT EXISTS FOR (n:Medicacion) REQUIRE n.medicacion_id IS UNIQUE",
 
     #PROPIEDAD NOT NULL
     "CREATE CONSTRAINT persona_nombre_req IF NOT EXISTS FOR (n:Persona) REQUIRE n.nombre IS NOT NULL",
