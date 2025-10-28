@@ -4,7 +4,7 @@ from typing import List, Tuple
 from neo4j_client import Neo4jClient
 from schema_bootstrap import bootstrap
 from llm_triplets_to_cypher import cypher_from_triplets
-from tripletas_demo import RAW_TRIPLES_DEMO
+from tripletas_demo import *
 
 def _elapsed_str(start: float) -> str:
     """Devuelve el tiempo transcurrido desde start en formato (X.XXs)."""
@@ -26,7 +26,7 @@ if __name__ == "__main__":
 
         print(" LLM: mapeando tripletas crudas → Cypher…")
         t0 = time.time()
-        cypher_script = cypher_from_triplets(RAW_TRIPLES_DEMO)
+        cypher_script = cypher_from_triplets(RAW_TRIPLES_DEMO3)
         print("   ✅ Cypher generado", _elapsed_str(t0))
 
         print("─── Cypher generado ───\n", cypher_script)

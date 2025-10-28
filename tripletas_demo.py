@@ -34,3 +34,50 @@ RAW_TRIPLES_DEMO: List[Tuple[str, str, str]] = [
     ("paracetamol","se toma","cada 8 horas"),
 
 ]
+
+RAW_TRIPLES_DEMO2: List[Tuple[str, str, str]] = [
+    # ---- Persona principal con más detalles ----
+    ("Ana García", "tiene", "45 años"),
+    
+    # ---- Red social más compleja ----
+    ("Ana García", "conoce", "Pedro Sánchez"),
+    
+    # ---- Actividades variadas ----
+    ("Ana García", "realiza", "yoga"),
+    ("yoga", "categoria", "fisica"),
+    ("yoga", "frecuencia", "varias_por_semana"),
+    
+    # ---- Síntomas diversos ----
+    
+    ("Ana García", "padece", "mareos"),
+    ("mareos", "categoria", "motor"),
+    ("mareos", "frecuencia", "semanal"),
+    ("mareos", "inicio", "15/01/2023"),
+    ("dolor articular", "gravedad", "moderada"),
+
+    
+    # ---- Medicación compleja ----
+    ("Ana García", "toma", "lexatin"),
+    ("lexatin", "se toma", "cuando necesita"),
+    
+    
+    # ---- Hábitos de sueño ----
+    ("Ana García", "tiene", "problemas para dormir"),
+    ("problemas para dormir", "frecuencia", "varias_por_semana"),
+    
+    # ---- Alimentación ----
+    ("Ana García", "bebe", "2 litros de agua al día"),
+    
+    # ---- Historial médico ----
+    ("Ana García", "es", "alérgica a penicilina"),
+    
+    # ---- Actividades sociales ----
+    ("Ana García", "visita", "sus padres"),
+    ("visitar padres", "frecuencia", "quincenal"),
+    
+]
+RAW_TRIPLES_DEMO3: List[Tuple[str, str, str]] = [
+    ("Ana García", "conoce", "Pedro Sánchez"),
+    ("Ana García", "tiene", "problemas para dormir"),
+    ("problemas para dormir", "frecuencia", "varias_por_semana"),
+]
