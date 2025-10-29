@@ -1,10 +1,16 @@
-Perfecto, Luis. Aquí tienes tu `README.md` reescrito con formato claro, profesional y orden lógico. Incluye instrucciones paso a paso, dependencias, configuración del entorno y ejecución del módulo.
 
----
+# 🧠 Proyecto: Conversación → Cypher
 
-# 🧠 Proyecto: Triplets → Cypher
+Este proyecto tiene como objetivo el desarrollo de un sistema de chat conversacional capaz de
+transformar el lenguaje natural del usuario en consultas Cypher, que posteriormente alimentan un
+grafo de conocimiento construido en Neo4j.​
 
-Este proyecto convierte **tripletas semánticas** (sujeto, verbo, objeto) en **sentencias Cypher** listas para insertar en una base de datos **Neo4j**, utilizando un modelo LLM alojado en **LlamUS** o **Ollama**.
+El propósito principal del grafo es validar información derivada de escalas médicas, facilitando así la
+estructuración y verificación de datos clínicos provenientes de interacciones conversacionales.​
+
+A través de esta arquitectura, se busca integrar procesamiento de lenguaje natural, lógica semántica
+y almacenamiento orientado a grafos, permitiendo una forma intuitiva y eficiente de alimentar y
+consultar información médica compleja.
 
 ---
 
@@ -107,7 +113,7 @@ proyecto/
 ## 🧩 6. Requisitos previos
 
 * Python **3.12+**
-* Servidor **Neo4j** corriendo en `bolt://localhost:7687`
+* Servidor **Neo4j** corriendo
 * Acceso a **LlamUS** o **Ollama** (según configuración del `.env`)
 
 ---
