@@ -11,6 +11,7 @@ estructuración y verificación de datos clínicos provenientes de interacciones
 A través de esta arquitectura, se busca integrar procesamiento de lenguaje natural, lógica semántica
 y almacenamiento orientado a grafos, permitiendo una forma intuitiva y eficiente de alimentar y
 consultar información médica compleja.
+
 ---
 
 ## ⚙️ 1. Crear entorno virtual
@@ -112,7 +113,7 @@ proyecto/
 ## 🧩 6. Requisitos previos
 
 * Python **3.12+**
-* Servidor **Neo4j** corriendo en `bolt://localhost:7687`
+* Servidor **Neo4j** corriendo
 * Acceso a **LlamUS** o **Ollama** (según configuración del `.env`)
 
 ---
