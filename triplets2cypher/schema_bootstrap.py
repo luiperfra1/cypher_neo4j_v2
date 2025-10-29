@@ -1,5 +1,5 @@
 from __future__ import annotations
-from neo4j_client import Neo4jClient
+from .neo4j_client import Neo4jClient
 
 
 # --- Existencia de fecha en TODAS las relaciones que usas ---

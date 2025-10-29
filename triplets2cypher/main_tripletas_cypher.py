@@ -1,10 +1,10 @@
 from __future__ import annotations
 import time
 from typing import List, Tuple
-from neo4j_client import Neo4jClient
-from schema_bootstrap import bootstrap
-from llm_triplets_to_cypher import cypher_from_triplets
-from tripletas_demo import *
+from .neo4j_client import Neo4jClient
+from .schema_bootstrap import bootstrap
+from .llm_triplets_to_cypher import cypher_from_triplets
+from .tripletas_demo import *
 
 def _elapsed_str(start: float) -> str:
     """Devuelve el tiempo transcurrido desde start en formato (X.XXs)."""
