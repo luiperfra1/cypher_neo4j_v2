@@ -1,6 +1,3 @@
-Perfecto, Luis. Aquí tienes tu `README.md` reescrito con formato claro, profesional y orden lógico. Incluye instrucciones paso a paso, dependencias, configuración del entorno y ejecución del módulo.
-
----
 
 # 🧠 Proyecto: Conversación → Cypher
 
