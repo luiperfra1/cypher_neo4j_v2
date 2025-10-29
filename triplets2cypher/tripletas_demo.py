@@ -53,7 +53,7 @@ RAW_TRIPLES_DEMO2: List[Tuple[str, str, str]] = [
     ("mareos", "categoria", "motor"),
     ("mareos", "frecuencia", "semanal"),
     ("mareos", "inicio", "15/01/2023"),
-    ("dolor articular", "gravedad", "moderada"),
+    ("mareos", "gravedad", "moderada"),
 
     
     # ---- Medicación compleja ----
