@@ -72,20 +72,38 @@ USER_ID=
 
 ---
 
-## 🚀 4. Ejecutar el triplets2cypher
+Aquí tienes la versión ampliada del bloque del README con soporte para el nuevo parámetro `--bd`, clara y con formato profesional:
 
-Desde la raíz del proyecto, ejecuta:
+---
+
+## 🚀 4. Ejecutar el `triplets2bd`
+
+Desde la raíz del proyecto, ejecuta el módulo principal:
 
 ```bash
-python -m triplets2cypher.main_tripletas_cypher
+python -m triplets2bd.main_tripletas_bd
 ```
 
-Esto:
+Por defecto, el script utiliza **Neo4j** como backend y:
 
-* Limpia la base de datos Neo4j.
-* Crea índices y constraints.
-* Genera las sentencias Cypher a partir de las tripletas de ejemplo.
-* Inserta las entidades y relaciones en Neo4j.
+1. Limpia la base de datos existente.
+2. Crea constraints e índices.
+3. Genera las sentencias Cypher a partir de las tripletas.
+4. Ejecuta las sentencias en la base de datos.
+
+---
+
+### 🧩 Cambiar el backend de salida
+
+También puedes indicar explícitamente el backend mediante el parámetro `--bd`:
+
+| Comando                                                      | Descripción                                                  |
+| ------------------------------------------------------------ | ------------------------------------------------------------ |
+| `python -m triplets2bd.main_tripletas_bd`            | Usa **Neo4j** (modo por defecto).                            |
+| `python -m triplets2bd.main_tripletas_bd --bd neo4j` | Fuerza el modo **Neo4j**.                                    |
+| `python -m triplets2bd.main_tripletas_bd --bd sql`   | Genera el script en formato **SQL** sin ejecutarlo en Neo4j. |
+
+En modo `sql`, el script **no conecta a Neo4j**, simplemente imprime el código SQL generado por el modelo.
 
 ---
 
