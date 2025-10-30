@@ -6,8 +6,8 @@ RAW_TRIPLES_DEMO: List[Tuple[str, str, str]] = [
     ("Jose Luis", "tiene", "59 años"), 
 
     # ---- Conoce ----
-    ("Jose Luis", "conoce", "María"),              
-    ("Jose Luis", "conoce", "Juan"),              
+    #("Jose Luis", "conoce", "María"),              
+    #("Jose Luis", "conoce", "Juan"),              
 
     # ---- Actividad ----
     ("Jose Luis", "realiza", "correr"),
@@ -40,7 +40,7 @@ RAW_TRIPLES_DEMO2: List[Tuple[str, str, str]] = [
     ("Ana García", "tiene", "45 años"),
     
     # ---- Red social más compleja ----
-    ("Ana García", "conoce", "Pedro Sánchez"),
+    #("Ana García", "conoce", "Pedro Sánchez"),
     
     # ---- Actividades variadas ----
     ("Ana García", "realiza", "yoga"),
@@ -78,7 +78,7 @@ RAW_TRIPLES_DEMO2: List[Tuple[str, str, str]] = [
 ]
 #cambiar diaramente por semananal mente y comentar reseteo de bd
 RAW_TRIPLES_DEMO3: List[Tuple[str, str, str]] = [
-    ("Ana García", "conoce", "Pedro Sánchez"),
-    #("Ana García", "tiene", "problemas para dormir"),
+    #("Ana García", "conoce", "Pedro Sánchez"),
+    ("Ana García", "tiene", "problemas para dormir"),
     ("problemas para dormir", "frecuencia", "diariamente"),
 ]
