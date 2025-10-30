@@ -69,13 +69,14 @@ RAW_TRIPLES_DEMO2: List[Tuple[str, str, str]] = [
     ("Ana García", "bebe", "2 litros de agua al día"),
     
     # ---- Historial médico ----
-    ("Ana García", "es", "alérgica a penicilina"),
+    ("Ana García", "tiene", "alérgía a penicilina"),
     
     # ---- Actividades sociales ----
     ("Ana García", "visita", "sus padres"),
     ("visitar padres", "frecuencia", "quincenal"),
     
 ]
+
 #cambiar diaramente por semananal mente y comentar reseteo de bd
 RAW_TRIPLES_DEMO3: List[Tuple[str, str, str]] = [
     #("Ana García", "conoce", "Pedro Sánchez"),
