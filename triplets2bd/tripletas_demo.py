@@ -83,3 +83,49 @@ RAW_TRIPLES_DEMO3: List[Tuple[str, str, str]] = [
     ("Ana García", "tiene", "problemas para dormir"),
     ("problemas para dormir", "frecuencia", "diariamente"),
 ]
+
+RAW_TRIPLES_DEMO4: List[Tuple[str, str, str]] = [
+    # Persona A
+    ("Ana García", "tiene", "45 años"),
+
+    # Actividad A1
+    ("Ana García", "realiza", "yoga"),
+    ("yoga", "categoria", "fisica"),
+    ("yoga", "frecuencia", "varias_por_semana"),
+
+    # Síntoma A1
+    ("Ana García", "padece", "mareos"),
+    ("mareos", "categoria", "motor"),
+    ("mareos", "frecuencia", "semanal"),
+    ("mareos", "inicio", "15/01/2023"),
+    ("mareos", "gravedad", "moderada"),
+
+    # Medicación A1
+    ("Ana García", "toma", "ibuprofeno"),
+    ("ibuprofeno", "se toma", "cuando duele"),
+
+    # Actividad A2 (hábito modelado como actividad, ya viene en canónico)
+    ("Ana García", "realiza", "jugar a la petanca"),
+    ("jugar a la petanca", "categoria", "motor"),
+    ("jugar a la petanca", "frecuencia", "diaria"),
+
+    # Persona B
+    ("José Luis", "tiene", "59 años"),
+
+    # Actividad B1
+    ("José Luis", "realiza", "correr"),
+    ("correr", "categoria", "fisica"),
+    ("correr", "frecuencia", "semanal"),
+
+    # Medicación B1
+    ("José Luis", "toma", "paracetamol"),
+    ("paracetamol", "se toma", "cada 8 horas"),
+
+    #no permitidas
+    ("Ana García", "juega", "futbol"),
+
+]
+
+RAW_TRIPLES_DEMO5: List[Tuple[str, str, str]] = [
+    ("Ana García", "juega", "futbol"),
+    ]
