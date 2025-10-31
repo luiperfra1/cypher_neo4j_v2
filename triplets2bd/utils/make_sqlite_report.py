@@ -5,13 +5,13 @@ import os
 import sqlite3
 from typing import Any, List, Tuple
 
-TRUNC = 60  # para acortar celdas largas
+TRUNC = 120  # para acortar celdas largas
 
 def _truncate(val: Any, maxlen: int = TRUNC) -> str:
     s = "" if val is None else str(val)
     return s if len(s) <= maxlen else s[: maxlen - 1] + "…"
 
-def _as_table(headers: List[str], rows: List[Tuple[Any, ...]], maxw: int = 100) -> str:
+def _as_table(headers: List[str], rows: List[Tuple[Any, ...]], maxw: int = 300) -> str:
     widths = [len(h) for h in headers]
     for r in rows:
         for i, cell in enumerate(r):
