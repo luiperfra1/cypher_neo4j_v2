@@ -4,8 +4,8 @@ import argparse
 from typing import List, Tuple
 
 # Neo4j
-from .neo4j_client import Neo4jClient
-from .schema_bootstrap import bootstrap  # crea constraints/índices en Neo4j
+from .utils.neo4j_client import Neo4jClient
+from .utils.schema_bootstrap import bootstrap  # crea constraints/índices en Neo4j
 
 # LLM mapper (genera Cypher o SQL según backend)
 from .llm_triplets_to_bd import bd_from_triplets
@@ -14,11 +14,11 @@ from .llm_triplets_to_bd import bd_from_triplets
 from .tripletas_demo import *
 
 # SQLite
-from .sqlite_client import SqliteClient
-from .schema_sqlite_bootstrap import bootstrap_sqlite, reset_sql
+from .utils.sqlite_client import SqliteClient
+from .utils.schema_sqlite_bootstrap import bootstrap_sqlite, reset_sql
 
 # --- NUEVO: generador de reporte TXT ---
-from .make_sqlite_report import make_content_only_report
+from .utils.make_sqlite_report import make_content_only_report
 
 
 def _elapsed_str(start: float) -> str:
@@ -86,7 +86,8 @@ if __name__ == "__main__":
         # --- Generar script ---
         print(" LLM: mapeando tripletas crudas → script…")
         t0 = time.time()
-        script = bd_from_triplets(RAW_TRIPLES_DEMO3, bd)
+        #---------------------------------------------------------------------------------------------------------------------------
+        script = bd_from_triplets(RAW_TRIPLES_DEMO2, bd)
         print("   ✅ Script generado", _elapsed_str(t0))
 
         print("─── Script generado ───\n", script)
