@@ -4,14 +4,25 @@ import argparse
 import json
 from typing import List, Tuple, Optional
 
-# Determinista
+# =========================
+# Determinista SQL (existente)
+# =========================
 from .triplets2sql_rule_based import (
     Triplet,
-    partition_triplets_strict,
+    partition_triplets_strict as partition_triplets_strict_sql,
     compile_sql_script,
 )
 
-# LLM mapper
+# =========================
+# Determinista Cypher (nuevo, sin 'conoce')
+# =========================
+# Asegúrate de tener el paquete triplets2cypher_rule_based/ creado según te pasé.
+from .triplets2cypher_rule_based import (
+    partition_triplets_strict as partition_triplets_strict_cypher,
+    compile_cypher_script,
+)
+
+# LLM mapper (genera Cypher o SQL según backend)
 from .llm_triplets_to_bd import bd_from_triplets
 
 # Neo4j
@@ -29,7 +40,6 @@ from .utils.make_sqlite_report import make_content_only_report
 from .tripletas_demo import *
 
 Triplet = Tuple[str, str, str]
-LLM_MARK = "-- ==== SQL (LLM complemento) ===="
 
 
 def _elapsed_str(start: float) -> str:
@@ -125,16 +135,26 @@ if __name__ == "__main__":
         t0 = time.time()
         script_parts: List[str] = []
 
+        # Marca LLM acorde al backend
+        # Marca LLM acorde al backend
+        LLM_MARK = "// ==== CYPHER (LLM complemento) ====" if bd == "neo4j" else "-- ==== SQL (LLM complemento) ===="
+
         if mode == "llm":
-            llm_sql = bd_from_triplets(triplets, modo=bd).strip()
+            llm_script = bd_from_triplets(triplets, modo=bd).strip()
             script_parts.append(LLM_MARK)
-            script_parts.append(llm_sql)
+            script_parts.append(llm_script)
 
         elif mode == "hybrid":
-            supported, leftovers = partition_triplets_strict(triplets)
-            det_script = compile_sql_script(supported).strip()
-            script_parts.append("-- ==== SQL (determinista) ====")
-            script_parts.append(det_script)
+            if bd == "neo4j":
+                supported, leftovers = partition_triplets_strict_cypher(triplets)
+                det_script = compile_cypher_script(supported).strip()
+                script_parts.append("// ==== CYPHER (determinista) ====")
+                script_parts.append(det_script)
+            else:
+                supported, leftovers = partition_triplets_strict_sql(triplets)
+                det_script = compile_sql_script(supported).strip()
+                script_parts.append("-- ==== SQL (determinista) ====")
+                script_parts.append(det_script)
 
             if leftovers:
                 print("─── Tripletas FUERA DE FORMATO → LLM ───")
@@ -142,10 +162,10 @@ if __name__ == "__main__":
                     print(f"[OUT] ({s}, {v}, {o}) -> {reason}")
 
                 leftovers_raw = [(s, v, o) for (s, v, o), _ in leftovers]
-                llm_sql = bd_from_triplets(leftovers_raw, modo=bd).strip()
-                if llm_sql:
+                llm_script = bd_from_triplets(leftovers_raw, modo=bd).strip()
+                if llm_script:
                     script_parts.append(LLM_MARK)
-                    script_parts.append(llm_sql)
+                    script_parts.append(llm_script)
 
         script = ("\n".join(p for p in script_parts if p)).strip() + "\n"
         print("   ✅ Script generado", _elapsed_str(t0))
