@@ -1,8 +1,9 @@
-# 🧠 Proyecto: Conversación → Cypher / SQL
 
-Este proyecto desarrolla un sistema conversacional capaz de transformar el lenguaje natural del usuario en **tripletas semánticas**, que posteriormente se convierten en consultas **Cypher** (para Neo4j) o **SQL** (para SQLite).​
+# 🧠 Proyecto: Conversación → Tripletas → Cypher / SQL
 
-El objetivo principal es crear una infraestructura que permita **estructurar y validar información derivada de escalas médicas y conversaciones clínicas**, integrando procesamiento del lenguaje natural, lógica semántica y almacenamiento tanto en grafos como en bases relacionales.
+Este proyecto desarrolla un sistema capaz de transformar lenguaje natural del usuario en **tripletas semánticas**, que posteriormente se convierten en consultas **Cypher** (para Neo4j) o **SQL** (para SQLite).
+
+El objetivo principal es crear una infraestructura que permita **estructurar y validar información derivada de conversaciones clínicas**, integrando procesamiento del lenguaje natural, generación de tripletas y persistencia en grafos o bases relacionales.
 
 ---
 
@@ -11,13 +12,11 @@ El objetivo principal es crear una infraestructura que permita **estructurar y v
 ```bash
 py -3.12 -m venv .venv
 .venv\Scripts\activate
-````
+```
 
 ---
 
 ## 📦 2. Instalar dependencias
-
-Instala las librerías necesarias ejecutando:
 
 ```bash
 pip install -r requirements.txt
@@ -27,7 +26,7 @@ pip install -r requirements.txt
 
 ## 🔐 3. Configurar variables de entorno
 
-Crea un archivo llamado `.env` en la raíz del proyecto con el siguiente contenido:
+Crea un archivo `.env` en la raíz del proyecto con el siguiente contenido:
 
 ```bash
 # --- Neo4j ---
@@ -63,103 +62,114 @@ USER_ID=
 
 ---
 
-## 🚀 4. Ejecutar el `triplets2bd`
+## 🧠 4. Ejecutar el `text2triplet` (Extractor de Tripletas ↦ Texto → Tripletas)
 
-Desde la raíz del proyecto, ejecuta el módulo principal:
+Este módulo permite **extraer tripletas semánticas directamente desde texto libre**, utilizando un LLM o el extractor compatible con KG-Gen. Es el paso previo antes de convertirlas a Cypher/SQL con `triplets2bd`.
+
+```bash
+python -m text2triplets.main_kg --text TEXT3
+```
+
+Por defecto:
+
+1. Usa el modo **LLM** (`text2triplet`)
+2. Aplica el contexto y ontología definida
+3. Filtra tripletas inválidas (a menos que se use `--no-drop`)
+4. Muestra tiempos parciales y resultado final
+
+### Parámetros disponibles
+
+| Parámetro   | Descripción                                       | Valor por defecto | Ejemplo               |
+| ----------- | ------------------------------------------------- | ----------------- | --------------------- |
+| `--mode`    | Motor de extracción: `llm` o `kggen`              | `llm`             | `--mode kggen`        |
+| `--text`    | Texto de prueba definido en `texts.py`            | `TEXT1`           | `--text TEXT4`        |
+| `--model`   | Sobrescribe el modelo del `.env` o del `KGConfig` | Usa el del `.env` | `--model qwen2.5:14b` |
+| `--context` | Ontología / reglas a aplicar                      | `DEFAULT_CONTEXT` | `--context "..."`     |
+| `--no-drop` | Muestra también tripletas inválidas               | *Desactivado*     | `--no-drop`           |
+
+### Ejemplos
+
+```bash
+python -m text2triplets.main_kg --text TEXT3
+python -m text2triplets.main_kg --mode kggen --text TEXT3
+python -m text2triplets.main_kg --text TEXT8 --no-drop
+python -m text2triplets.main_kg --text TEXT4 --model qwen2.5:14b
+```
+
+### Textos disponibles (`texts.py`)
+
+```
+TEXT1, TEXT2, TEXT3, TEXT4, TEXT5, TEXT6, TEXT7, TEXT8, TEXT9, TEXT10, TEXT11
+```
+
+---
+
+## 🚀 5. Ejecutar el `triplets2bd` (Tripletas → Cypher / SQL)
+
+Este módulo transforma tripletas en sentencias **Cypher** o **SQL**, y las ejecuta en Neo4j o SQLite.
 
 ```bash
 python -m triplets2bd.main_tripletas_bd
 ```
 
-Por defecto, el script utiliza **Neo4j** como backend y:
+Por defecto:
 
-1. Limpia la base de datos existente.
-2. Crea constraints e índices.
-3. Genera las sentencias Cypher a partir de las tripletas.
-4. Ejecuta las sentencias en Neo4j.
+1. Limpia la base de datos
+2. Crea constraints e índices
+3. Genera sentencias Cypher a partir de las tripletas
+4. Ejecuta las sentencias en Neo4j
 
-Al finalizar, mostrará el tiempo total de ejecución y confirmará las operaciones realizadas.
+### Parámetros disponibles
 
----
+| Parámetro     | Descripción              | Valor por defecto          | Ejemplo                          |
+| ------------- | ------------------------ | -------------------------- | -------------------------------- |
+| `--bd`        | Backend: `neo4j` o `sql` | `neo4j`                    | `--bd sql`                       |
+| `--sqlite-db` | Ruta al fichero SQLite   | `./data/users/demo.sqlite` | `--sqlite-db ./data/test.sqlite` |
+| `--no-reset`  | Evita resetear la BD     | *Resetea por defecto*      | `--no-reset`                     |
 
-### 🧩 Parámetros disponibles
-
-El script acepta los siguientes parámetros opcionales:
-
-| Parámetro     | Descripción                                                     | Valor por defecto                          | Ejemplo                          |
-| ------------- | --------------------------------------------------------------- | ------------------------------------------ | -------------------------------- |
-| `--bd`        | Define el backend de salida. Valores posibles: `neo4j` o `sql`. | `neo4j`                                    | `--bd sql`                       |
-| `--sqlite-db` | Ruta al fichero SQLite (solo si `--bd sql`).                    | `./data/users/demo.sqlite`                 | `--sqlite-db ./data/demo.sqlite` |
-| `--no-reset`  | Evita resetear la base de datos antes de crear el esquema.      | *No indicado* (por defecto **sí** resetea) | `--no-reset`                     |
-
----
-
-### 🧩 Ejemplos de ejecución
-
-#### 🟦 Usar Neo4j (modo por defecto)
+### Ejemplos
 
 ```bash
 python -m triplets2bd.main_tripletas_bd
-```
-
-> Limpia Neo4j, crea índices, genera Cypher y lo ejecuta en la base de datos.
-
-#### 🟨 Forzar modo Neo4j explícitamente
-
-```bash
 python -m triplets2bd.main_tripletas_bd --bd neo4j
-```
-
-#### 🟩 Ejecutar en modo SQLite
-
-```bash
 python -m triplets2bd.main_tripletas_bd --bd sql
-```
-
-> Genera y ejecuta el script SQL sobre el fichero `data/users/demo.sqlite`.
-
-#### 🟪 Usar una base SQLite personalizada
-
-```bash
 python -m triplets2bd.main_tripletas_bd --bd sql --sqlite-db ./data/test.sqlite
-```
-
-#### 🟥 Evitar el reseteo de la base de datos
-
-```bash
 python -m triplets2bd.main_tripletas_bd --bd sql --no-reset
 ```
 
-> Mantiene los datos existentes y añade las nuevas inserciones.
+### Reporte automático en modo SQL
 
----
-
-### 🧾 Reporte automático en modo SQL
-
-Cuando se ejecuta con `--bd sql`, al finalizar la inserción de datos se genera **automáticamente** un
-reporte en formato `.txt` con el contenido de las tablas **que contienen filas**.
-
-El archivo se crea junto al `.sqlite` con el nombre:
+Genera un `.txt` con el contenido de las tablas que tengan datos:
 
 ```
 data/users/demo_report.txt
 ```
 
-Cada tabla con contenido se representa así:
+---
+
+## 🔄 Flujo completo del sistema
 
 ```
-Tabla: Sintoma
-Filas: 1
-
-Muestra (hasta 15 filas):
-id | sintoma_id | tipo       | fecha_ini… | fecha_fin | categoria | frecuencia | gravedad | created_at | updated_at
----+------------+------------+------------+-----------+-----------+------------+----------+------------+-----------
-1  | sintoma_p… | problemas… |            |           |           | diariamen… |          | 2025-10-3… | 2025-10-3…
+Usuario
+   ↓
+Conversación
+   ↓
+LLM Extractor (limpieza + resumen canónico)
+   ↓
+text2triplet (LLM o KG-Gen)
+   ↓
+Tripletas validadas
+   ↓
+triplets2bd
+   ↓
+Cypher / SQL
+   ↓
+Neo4j / SQLite
 ```
 
 ---
 
-## 📂 5. Estructura del proyecto
+## 📂 6. Estructura del proyecto
 
 ```
 proyecto/
@@ -173,12 +183,19 @@ proyecto/
 │   ├── __init__.py
 │   ├── main_tripletas_bd.py
 │   ├── llm_triplets_to_bd.py
-│   ├── make_sqlite_report.py       # ← genera el reporte TXT de contenido
+│   ├── make_sqlite_report.py
 │   ├── sqlite_client.py
 │   ├── schema_sqlite_bootstrap.py
 │   ├── neo4j_client.py
 │   ├── schema_bootstrap.py
 │   └── tripletas_demo.py
+│
+├── text2triplets/
+│   ├── __init__.py
+│   ├── main_kg.py
+│   ├── text2triplet.py
+│   ├── texts.py
+│   └── llm_client.py
 │
 ├── .env
 ├── .gitignore
@@ -187,67 +204,43 @@ proyecto/
 
 ---
 
-## 🧩 6. Requisitos previos
+## 🧩 7. Requisitos previos
 
-* **Python 3.12+**
-* **Neo4j** corriendo (para modo `neo4j`)
-* **SQLite 3** (instalado por defecto en Python)
-* Acceso a **LlamUS**, **OpenAI** o **Ollama** según el `.env`
-* Conexión local o remota a la base Neo4j configurada en `.env`
+* Python 3.12+
+* Neo4j (si se usa modo `neo4j`)
+* SQLite 3 (modo `sql`)
+* Acceso a LlamUS, OpenAI u Ollama según `.env`
+* Conexión local o remota al servidor Neo4j configurado
 
 ---
 
-## 🧠 7. Ejemplo de flujo completo
+## 🧠 8. Ejemplo de flujo completo
 
 ```bash
-# 1. Crear entorno y activar
 py -3.12 -m venv .venv
 .venv\Scripts\activate
-
-# 2. Instalar dependencias
 pip install -r requirements.txt
 
-# 3. Ejecutar el script (modo SQL)
+python -m text2triplets.main_kg --text TEXT3
 python -m triplets2bd.main_tripletas_bd --bd sql
 
-# 4. Consultar el archivo de salida
 type data/users/demo_report.txt
 ```
 
-Salida esperada en consola:
+---
 
-```
-Backend seleccionado: sql | reset=sí
-Preparando SQLite en ./data/users/demo.sqlite…
-🧨 Esquema SQL reseteado (0.21s)
-✅ Esquema SQL listo (0.04s)
-LLM: mapeando tripletas crudas → script…
-✅ Script generado (3.12s)
-Ejecutando script SQL en SQLite…
-✅ SQL aplicado en SQLite (0.05s)
-Generando reporte de contenido en data/users/demo_report.txt…
-✅ Reporte generado correctamente
-✅ Proceso completo (3.42s)
+## 🧾 9. Notas adicionales
+
+* `text2triplet` puede integrarse con un futuro módulo conversacional para generar tripletas desde diálogo real.
+* El flujo soporta reemplazar el extractor LLM por uno rule-based si fuera necesario.
+* `make_sqlite_report.py` puede ejecutarse de forma independiente:
+
+```bash
+python -m triplets2bd.make_sqlite_report data/users/demo.sqlite -o data/users/demo_report.txt
 ```
 
 ---
 
-## ⚡ 8. Notas adicionales
+## 📍 10. Créditos
 
-* El **modo Neo4j** y el **modo SQL** comparten la misma fuente de tripletas (`tripletas_demo.py`).
-* Puede adaptar el flujo para usar **tripletas generadas dinámicamente** o **entrada conversacional real**.
-* El archivo `make_sqlite_report.py` es totalmente independiente y puede ejecutarse por separado:
-
-  ```bash
-  python -m triplets2bd.make_sqlite_report data/users/demo.sqlite -o data/users/demo_report.txt
-  ```
-* El sistema imprime los tiempos parciales y totales de cada fase, para facilitar la monitorización del rendimiento.
-
----
-
-## 🧾 9. Créditos
-
-Desarrollado como parte del entorno de investigación en la **Universidad de Sevilla**, integrando técnicas de modelado semántico, generación de tripletas mediante LLMs y persistencia en grafos y bases de datos relacionales.
-
----
-
+Desarrollado como parte del entorno de investigación en la **Universidad de Sevilla**, integrando modelos LLM, generación de tripletas y persistencia en grafos y bases de datos relacionales.
