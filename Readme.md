@@ -152,47 +152,7 @@ Tripletas → Determinista (estricto) → [válidas] → script
                  LLM → script extra
 ```
 
----
 
-### 🧪 Ejemplos
-
-#### 🟦 Modo SQL por defecto
-
-```bash
-python -m triplets2bd.main_tripletas_bd
-```
-
-#### 🟨 Forzar Neo4j
-
-```bash
-python -m triplets2bd.main_tripletas_bd --bd neo4j
-```
-
-#### 🟩 Modo híbrido (determinista + LLM)
-
-```bash
-python -m triplets2bd.main_tripletas_bd --hybrid
-```
-
-#### 🟪 Usar fichero con tripletas
-
-```bash
-python -m triplets2bd.main_tripletas_bd --triplets-file ./data/my_triplets.txt
-```
-
-#### 🟧 Usar tripletas inline en JSON
-
-```bash
-python -m triplets2bd.main_tripletas_bd --triplets-json '[["Ana","padece","insomnio"]]'
-```
-
-#### 🟥 No resetear la BD
-
-```bash
-python -m triplets2bd.main_tripletas_bd --no-reset
-```
-
----
 
 ### 📄 Reporte automático en modo SQL
 
@@ -206,18 +166,6 @@ Incluye filas por tabla y una muestra de hasta 15 registros por tabla.
 
 ---
 
-¿Quieres que ahora te devuelva el **README completo** con esta sección sustituida, listo para pegar sin pensar?
-
-
-### Reporte automático en modo SQL
-
-Genera un `.txt` con el contenido de las tablas que tengan datos:
-
-```
-data/users/demo_report.txt
-```
-
----
 
 ## 🔄 Flujo completo del sistema
 
