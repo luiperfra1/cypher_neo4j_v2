@@ -63,7 +63,7 @@ USER_ID=
 
 ---
 
-## 🧠 4. Ejecutar el `text2triplet` (Extractor de Tripletas ↦ Texto → Tripletas)
+## 🧠 4. Ejecutar el `text2triplet` (Texto Resumen → Tripletas)
 
 Este módulo permite **extraer tripletas semánticas directamente desde texto libre**, utilizando un LLM o el extractor compatible con KG-Gen. Es el paso previo antes de convertirlas a Cypher/SQL con `triplets2bd`.
 
