@@ -55,6 +55,7 @@ OPENAI_API_KEY=***tu_key***
 
 # --- Modelos ---
 MODEL_TRIPLETAS_CYPHER=qwen2.5:32b
+MODEL_KG_GEN=openai/qwen2.5:14b
 
 # --- App ---
 USER_ID=
