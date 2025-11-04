@@ -189,39 +189,6 @@ Neo4j / SQLite
 
 ---
 
-## 📂 6. Estructura del proyecto
-
-```
-proyecto/
-│
-├── data/
-│   └── users/
-│       ├── demo.sqlite
-│       └── demo_report.txt
-│
-├── triplets2bd/
-│   ├── __init__.py
-│   ├── main_tripletas_bd.py
-│   ├── llm_triplets_to_bd.py
-│   ├── make_sqlite_report.py
-│   ├── sqlite_client.py
-│   ├── schema_sqlite_bootstrap.py
-│   ├── neo4j_client.py
-│   ├── schema_bootstrap.py
-│   └── tripletas_demo.py
-│
-├── text2triplets/
-│   ├── __init__.py
-│   ├── main_kg.py
-│   ├── text2triplet.py
-│   ├── texts.py
-│   └── llm_client.py
-│
-├── .env
-├── .gitignore
-└── README.md
-```
-
 ---
 
 ## 🧩 7. Requisitos previos
