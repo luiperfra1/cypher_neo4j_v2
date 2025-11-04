@@ -103,11 +103,11 @@ python -m text2triplets.main_kg --text TEXT4 --model qwen2.5:14b
 TEXT1, TEXT2, TEXT3, TEXT4, TEXT5, TEXT6, TEXT7, TEXT8, TEXT9, TEXT10, TEXT11
 ```
 
----
 
 ## 🚀 5. Ejecutar el `triplets2bd` (Tripletas → Cypher / SQL)
 
-Este módulo transforma tripletas en sentencias **Cypher** o **SQL**, y las ejecuta en Neo4j o SQLite.
+Este módulo transforma tripletas en sentencias **Cypher** o **SQL** y, opcionalmente, las ejecuta en Neo4j o SQLite.
+Puede funcionar en modo **LLM** o en modo **Híbrido** (determinista + LLM).
 
 ```bash
 python -m triplets2bd.main_tripletas_bd
@@ -115,28 +115,99 @@ python -m triplets2bd.main_tripletas_bd
 
 Por defecto:
 
-1. Limpia la base de datos
-2. Crea constraints e índices
-3. Genera sentencias Cypher a partir de las tripletas
-4. Ejecuta las sentencias en Neo4j
+1. Usa **SQL** como backend
+2. Resetea la base de datos
+3. Genera el script desde las tripletas
+4. Ejecuta las sentencias en SQLite
 
-### Parámetros disponibles
+---
 
-| Parámetro     | Descripción              | Valor por defecto          | Ejemplo                          |
-| ------------- | ------------------------ | -------------------------- | -------------------------------- |
-| `--bd`        | Backend: `neo4j` o `sql` | `neo4j`                    | `--bd sql`                       |
-| `--sqlite-db` | Ruta al fichero SQLite   | `./data/users/demo.sqlite` | `--sqlite-db ./data/test.sqlite` |
-| `--no-reset`  | Evita resetear la BD     | *Resetea por defecto*      | `--no-reset`                     |
+### 🧩 Parámetros disponibles
 
-### Ejemplos
+| Parámetro         | Descripción                                                                             | Valor por defecto          | Ejemplo                                           |
+| ----------------- | --------------------------------------------------------------------------------------- | -------------------------- | ------------------------------------------------- |
+| `--bd`            | Backend de salida: `neo4j` o `sql`                                                      | `sql`                      | `--bd neo4j`                                      |
+| `--sqlite-db`     | Ruta del fichero SQLite (solo si `--bd=sql`)                                            | `./data/users/demo.sqlite` | `--sqlite-db ./data/test.sqlite`                  |
+| `--no-reset`      | No resetear la BD antes de crear esquema                                                | *Resetea por defecto*      | `--no-reset`                                      |
+| `--hybrid`        | Usa modo híbrido: primero **determinista** y las tripletas fuera de esquema pasan a LLM | *Desactivado*              | `--hybrid`                                        |
+| `--triplets-json` | Cargar tripletas desde JSON inline                                                      | `None`                     | `--triplets-json '[["Ana","padece","insomnio"]]'` |
+| `--triplets-file` | Cargar tripletas desde fichero `.json` o `.txt`                                         | `None`                     | `--triplets-file ./ejemplo.txt`                   |
+
+---
+
+### 🧠 Modos de funcionamiento
+
+| Modo                     | Cómo funciona                                                                                  | Cuándo usarlo                                                |
+| ------------------------ | ---------------------------------------------------------------------------------------------- | ------------------------------------------------------------ |
+| **LLM (por defecto)**    | Todas las tripletas se procesan mediante LLM para generar Cypher/SQL                           | Cuando no importa el coste LLM y quieres máxima flexibilidad |
+| **Híbrido (`--hybrid`)** | Primero aplica un mapeo **determinista estricto**; las tripletas fuera de formato pasan al LLM | Para máxima precisión, control y menor consumo de LLM        |
+
+Flujo del modo híbrido:
+
+```
+Tripletas → Determinista (estricto) → [válidas] → script
+                    ↓
+             [no compatibles]
+                    ↓
+                 LLM → script extra
+```
+
+---
+
+### 🧪 Ejemplos
+
+#### 🟦 Modo SQL por defecto
 
 ```bash
 python -m triplets2bd.main_tripletas_bd
-python -m triplets2bd.main_tripletas_bd --bd neo4j
-python -m triplets2bd.main_tripletas_bd --bd sql
-python -m triplets2bd.main_tripletas_bd --bd sql --sqlite-db ./data/test.sqlite
-python -m triplets2bd.main_tripletas_bd --bd sql --no-reset
 ```
+
+#### 🟨 Forzar Neo4j
+
+```bash
+python -m triplets2bd.main_tripletas_bd --bd neo4j
+```
+
+#### 🟩 Modo híbrido (determinista + LLM)
+
+```bash
+python -m triplets2bd.main_tripletas_bd --hybrid
+```
+
+#### 🟪 Usar fichero con tripletas
+
+```bash
+python -m triplets2bd.main_tripletas_bd --triplets-file ./data/my_triplets.txt
+```
+
+#### 🟧 Usar tripletas inline en JSON
+
+```bash
+python -m triplets2bd.main_tripletas_bd --triplets-json '[["Ana","padece","insomnio"]]'
+```
+
+#### 🟥 No resetear la BD
+
+```bash
+python -m triplets2bd.main_tripletas_bd --no-reset
+```
+
+---
+
+### 📄 Reporte automático en modo SQL
+
+Si el backend es `sql`, al finalizar se genera un archivo `.txt` con el contenido de las tablas que tengan datos:
+
+```
+data/users/demo_report.txt
+```
+
+Incluye filas por tabla y una muestra de hasta 15 registros por tabla.
+
+---
+
+¿Quieres que ahora te devuelva el **README completo** con esta sección sustituida, listo para pegar sin pensar?
+
 
 ### Reporte automático en modo SQL
 
