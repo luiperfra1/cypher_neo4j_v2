@@ -15,6 +15,7 @@ class Settings:
     OPENAI_API_BASE: str | None = os.getenv("OPENAI_API_BASE")
     OPENAI_API_KEY: str | None = os.getenv("OPENAI_API_KEY")
     MODEL_TRIPLETAS_CYPHER: str | None = os.getenv("MODEL_TRIPLETAS_CYPHER")
+    MODEL_KG_GEN: str | None = os.getenv("MODEL_KG_GEN")
 
     USER_BASE_ID: str = os.getenv("USER_BASE_ID", "P001")
 

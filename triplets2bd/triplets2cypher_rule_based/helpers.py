@@ -5,7 +5,7 @@ import unicodedata
 from datetime import datetime
 from typing import Optional, List, Tuple
 
-from .constants import _DATE_FORMATS, ALLOWED_REL, ALLOWED_PROP
+from constants import _DATE_FORMATS, ALLOWED_REL, ALLOWED_PROP
 
 def slugify(text: str) -> str:
     s = text.strip().lower()

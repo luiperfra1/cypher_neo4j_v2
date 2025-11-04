@@ -15,7 +15,7 @@ from .helpers import (
     compile_sql_script,
 )
 
-from .constants import (
+from constants import (
     ALLOWED_REL,
     ALLOWED_PROP,
     PROPERTY_VERBS,

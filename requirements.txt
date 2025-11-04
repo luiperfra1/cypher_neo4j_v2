@@ -16,3 +16,5 @@ openai>=1.45.0
 # --- Desarrollo / typing / tests ---
 types-requests>=2.32.0.20241016
 pytest>=8.2.0
+
+kg-gen
