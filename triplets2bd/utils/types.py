@@ -1,4 +1,4 @@
-from __future__ import annotations
+# triplets2bd/utils/types.py
 from dataclasses import dataclass
 from typing import List, Tuple, Literal, Optional, Dict, Any
 
@@ -12,6 +12,9 @@ class EngineOptions:
     mode: Mode = "hybrid"
     reset: bool = True
     sqlite_db_path: str = "./data/users/demo.sqlite"
+    generate_report: bool = True
+    report_sample_limit: int = 15
+    report_path: Optional[str] = None  # si None -> <sqlite-db>_report.txt
 
 @dataclass
 class EngineResult:
@@ -22,5 +25,5 @@ class EngineResult:
     llm_script: str
     executed_statements: int
     leftovers: List[Tuple[Triplet, str]]
-    reset: bool                     # ← NUEVO
-    extras: Dict[str, Any]
+    reset: bool
+    extras: Dict[str, Any]  # incluirá extras["report_path"] si se generó

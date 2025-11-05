@@ -7,7 +7,7 @@ from typing import Optional
 from .utils.types import EngineOptions
 from .engine import run_triplets_to_bd
 from .utils.io import load_triplets_from_file, load_triplets_from_json_str
-from .tripletas_demo import RAW_TRIPLES_DEMO4
+from .tripletas_demo import *
 
 if __name__ == "__main__":
     p = argparse.ArgumentParser(description="Tripletas → Cypher/SQL (CLI)")
@@ -25,7 +25,7 @@ if __name__ == "__main__":
     triplets = (
         load_triplets_from_json_str(args.triplets_json) if args.triplets_json else
         load_triplets_from_file(args.triplets_file) if args.triplets_file else
-        RAW_TRIPLES_DEMO4
+        RAW_TRIPLES_DEMO
     )
 
     opts = EngineOptions(
