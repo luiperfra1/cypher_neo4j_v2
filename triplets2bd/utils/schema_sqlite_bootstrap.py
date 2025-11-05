@@ -174,7 +174,7 @@ def reset_sql(conn: Connection) -> None:
     for v in vistas:
         cur.execute(f"DROP VIEW IF EXISTS {v};")
 
-    # 2) Tablas de relación -> luego tablas base
+    # 2) Tablas de relación -> tablas base -> tablas auxiliares (incluye 'log')
     tablas = (
         "persona_realiza_actividad",
         "persona_padece_sintoma",
@@ -183,12 +183,14 @@ def reset_sql(conn: Connection) -> None:
         "actividad",
         "sintoma",
         "persona",
+        "log",
     )
     for t in tablas:
         cur.execute(f"DROP TABLE IF EXISTS {t};")
 
     cur.execute("PRAGMA foreign_keys = ON;")
     conn.commit()
+
 
 
 def bootstrap_sqlite(conn: Connection) -> None:

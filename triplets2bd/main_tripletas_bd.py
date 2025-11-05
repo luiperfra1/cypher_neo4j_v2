@@ -1,3 +1,4 @@
+# triplets2bd/main_tripletas_bd.py
 from __future__ import annotations
 import time
 import argparse
@@ -14,9 +15,8 @@ from .triplets2sql_rule_based import (
 )
 
 # =========================
-# Determinista Cypher (nuevo, sin 'conoce')
+# Determinista Cypher (sin 'conoce')
 # =========================
-# Asegúrate de tener el paquete triplets2cypher_rule_based/ creado según te pasé.
 from .triplets2cypher_rule_based import (
     partition_triplets_strict as partition_triplets_strict_cypher,
     compile_cypher_script,
@@ -27,17 +27,17 @@ from .llm_triplets_to_bd import bd_from_triplets
 
 # Neo4j
 from .utils.neo4j_client import Neo4jClient
-from .utils.schema_bootstrap import bootstrap
+from .utils.schema_bootstrap import bootstrap  # constraints/índices Neo4j
 
 # SQLite
 from .utils.sqlite_client import SqliteClient
 from .utils.schema_sqlite_bootstrap import bootstrap_sqlite, reset_sql
 
-# Reporte
+# Reporte (solo SQL)
 from .utils.make_sqlite_report import make_content_only_report
 
 # Demos
-from .tripletas_demo import *
+from .tripletas_demo import *  # por ejemplo RAW_TRIPLES_DEMO4
 
 Triplet = Tuple[str, str, str]
 
@@ -75,6 +75,46 @@ def _load_triplets_from_args(args) -> Optional[List[Triplet]]:
     return None
 
 
+# ============ LOG SQL DE SOBRANTES ============
+def _ensure_sql_log_table(conn) -> None:
+    """
+    Crea la tabla de log si no existe.
+      log(id INTEGER PK, ts TEXT, level TEXT, message TEXT, triplet TEXT, reason TEXT)
+    """
+    conn.executescript(
+        """
+        CREATE TABLE IF NOT EXISTS log (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            ts TEXT NOT NULL,
+            level TEXT NOT NULL,
+            message TEXT NOT NULL,
+            triplet TEXT,
+            reason TEXT
+        );
+        """
+    )
+
+
+def _insert_sql_leftovers_log(conn, leftovers: List[Tuple[Triplet, str]]) -> None:
+    """
+    Inserta en la tabla log las tripletas fuera de formato.
+    leftovers: lista de ((s, v, o), reason)
+    """
+    if not leftovers:
+        return
+    _ensure_sql_log_table(conn)
+    now_iso = time.strftime("%Y-%m-%dT%H:%M:%S")
+    data = [
+        (now_iso, "WARN", "Tripleta fuera de formato", f"({s}, {v}, {o})", reason)
+        for (s, v, o), reason in leftovers
+    ]
+    conn.executemany(
+        "INSERT INTO log (ts, level, message, triplet, reason) VALUES (?, ?, ?, ?, ?);",
+        data,
+    )
+    conn.commit()
+
+
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(
         description="Mapea tripletas a script (Cypher o SQL) y opcionalmente ejecuta en Neo4j/SQLite."
@@ -85,15 +125,28 @@ if __name__ == "__main__":
                         help="Ruta al fichero SQLite cuando --bd=sql.")
     parser.add_argument("--no-reset", action="store_true",
                         help="No resetear la BD (por defecto se resetea).")
-    parser.add_argument("--hybrid", action="store_true",
-                        help="Modo híbrido: primero determinista y, si hay tripletas fuera de formato, se pasan al LLM.")
+
+    # Modos: por defecto hybrid; --llm (solo LLM); --no-llm (determinista puro)
+    group = parser.add_mutually_exclusive_group()
+    group.add_argument("--llm", action="store_true",
+                       help="Solo LLM: ignora el motor determinista y mapea todo con LLM.")
+    group.add_argument("--no-llm", action="store_true",
+                       help="Determinista puro: nunca usa LLM. En Neo4j aborta si hay sobrantes. En SQL los sobrantes se registran en 'log' y no se ejecutan.")
+
     parser.add_argument("--triplets-json", type=str, default=None,
                         help='Tripletas JSON inline, p. ej. \'[["Jose","padece","insomnio"]]\'')
     parser.add_argument("--triplets-file", type=str, default=None,
                         help="Fichero .json o .txt (una tripleta por línea).")
 
     args = parser.parse_args()
-    mode = "hybrid" if args.hybrid else "llm"
+
+    # Determinar modo
+    if args.llm:
+        mode = "llm"
+    elif args.no_llm:
+        mode = "deterministic"
+    else:
+        mode = "hybrid"  # por defecto
 
     bd = args.bd
     sqlite_db_path = args.sqlite_db
@@ -124,54 +177,94 @@ if __name__ == "__main__":
                 reset_sql(sql.conn)
                 print("   🧨 Esquema reseteado", _elapsed_str(t0))
             t0 = time.time()
-            bootstrap_sqlite(sql.conn)
+            bootstrap_sqlite(sql.conn)  # crea tablas de dominio
+            _ensure_sql_log_table(sql.conn)  # garantizamos también la tabla de log
             print("   ✅ Esquema listo", _elapsed_str(t0))
 
         # --- Cargar tripletas ---
         triplets = _load_triplets_from_args(args) or RAW_TRIPLES_DEMO4
 
-        # --- Generar script ---
+        # --- Generación de script según modo ---
         print(" Generando script…")
         t0 = time.time()
         script_parts: List[str] = []
 
-        # Marca LLM acorde al backend
-        # Marca LLM acorde al backend
         LLM_MARK = "// ==== CYPHER (LLM complemento) ====" if bd == "neo4j" else "-- ==== SQL (LLM complemento) ===="
 
         if mode == "llm":
+            # Solo LLM
             llm_script = bd_from_triplets(triplets, modo=bd).strip()
-            script_parts.append(LLM_MARK)
-            script_parts.append(llm_script)
+            if llm_script:
+                script_parts.append(LLM_MARK if bd == "neo4j" else LLM_MARK)
+                script_parts.append(llm_script)
 
-        elif mode == "hybrid":
+        elif mode == "deterministic":
+            # Solo determinista
+            if bd == "neo4j":
+                supported, leftovers = partition_triplets_strict_cypher(triplets)
+                det_script = compile_cypher_script(supported).strip()
+                if leftovers:
+                    print("─── Tripletas fuera de formato (Neo4j, determinista) ───")
+                    for (s, v, o), reason in leftovers:
+                        print(f"[OUT] ({s}, {v}, {o}) -> {reason}")
+                    print(" Error: modo determinista en Neo4j detectó sobrantes. Abortando sin ejecutar.")
+                    raise SystemExit(1)
+                script_parts.append("// ==== CYPHER (determinista) ====")
+                if det_script:
+                    script_parts.append(det_script)
+            else:
+                supported, leftovers = partition_triplets_strict_sql(triplets)
+                det_script = compile_sql_script(supported).strip()
+                if leftovers:
+                    print("─── Tripletas fuera de formato → se registran en tabla 'log' (SQL) ───")
+                    for (s, v, o), reason in leftovers:
+                        print(f"[LOG] ({s}, {v}, {o}) -> {reason}")
+                    _insert_sql_leftovers_log(sql.conn, leftovers)
+                script_parts.append("-- ==== SQL (determinista) ====")
+                if det_script:
+                    script_parts.append(det_script)
+
+        else:
+            # Hybrid por defecto
             if bd == "neo4j":
                 supported, leftovers = partition_triplets_strict_cypher(triplets)
                 det_script = compile_cypher_script(supported).strip()
                 script_parts.append("// ==== CYPHER (determinista) ====")
-                script_parts.append(det_script)
+                if det_script:
+                    script_parts.append(det_script)
+                if leftovers:
+                    print("─── Tripletas FUERA DE FORMATO → LLM (Neo4j) ───")
+                    for (s, v, o), reason in leftovers:
+                        print(f"[OUT→LLM] ({s}, {v}, {o}) -> {reason}")
+                    leftovers_raw = [(s, v, o) for (s, v, o), _ in leftovers]
+                    llm_script = bd_from_triplets(leftovers_raw, modo=bd).strip()
+                    if llm_script:
+                        script_parts.append(LLM_MARK)
+                        script_parts.append(llm_script)
             else:
                 supported, leftovers = partition_triplets_strict_sql(triplets)
                 det_script = compile_sql_script(supported).strip()
                 script_parts.append("-- ==== SQL (determinista) ====")
-                script_parts.append(det_script)
+                if det_script:
+                    script_parts.append(det_script)
+                if leftovers:
+                    print("─── Tripletas FUERA DE FORMATO → LLM (SQL) ───")
+                    for (s, v, o), reason in leftovers:
+                        print(f"[OUT→LLM] ({s}, {v}, {o}) -> {reason}")
+                    _insert_sql_leftovers_log(sql.conn, leftovers)  # además las registramos
+                    leftovers_raw = [(s, v, o) for (s, v, o), _ in leftovers]
+                    llm_script = bd_from_triplets(leftovers_raw, modo=bd).strip()
+                    if llm_script:
+                        script_parts.append(LLM_MARK)
+                        script_parts.append(llm_script)
 
-            if leftovers:
-                print("─── Tripletas FUERA DE FORMATO → LLM ───")
-                for (s, v, o), reason in leftovers:
-                    print(f"[OUT] ({s}, {v}, {o}) -> {reason}")
+        script = ("\n".join(p for p in script_parts if p)).strip()
+        if script and not script.endswith("\n"):
+            script += "\n"
 
-                leftovers_raw = [(s, v, o) for (s, v, o), _ in leftovers]
-                llm_script = bd_from_triplets(leftovers_raw, modo=bd).strip()
-                if llm_script:
-                    script_parts.append(LLM_MARK)
-                    script_parts.append(llm_script)
-
-        script = ("\n".join(p for p in script_parts if p)).strip() + "\n"
         print("   ✅ Script generado", _elapsed_str(t0))
         print("─── Script generado ───")
-        print(script)
-
+        print(script if script else "(vacío)")
         # --- Ejecutar ---
         if bd == "neo4j":
             stmts = [s.strip() for s in script.split(";") if s.strip() and s.strip() != "--SKIP--"]
