@@ -107,7 +107,7 @@ TEXT1, TEXT2, TEXT3, TEXT4, TEXT5, TEXT6, TEXT7, TEXT8, TEXT9, TEXT10, TEXT11
 ## 🚀 5. Ejecutar el `triplets2bd` (Tripletas → Cypher / SQL)
 
 Este módulo transforma tripletas en sentencias **Cypher** o **SQL** y, opcionalmente, las ejecuta en Neo4j o SQLite.
-Puede funcionar en modo **LLM** o en modo **Híbrido** (determinista + LLM).
+Permite trabajar en tres modos: **Híbrido**, **LLM** o **Determinista puro**.
 
 ```bash
 python -m triplets2bd.main_tripletas_bd
@@ -117,40 +117,65 @@ Por defecto:
 
 1. Usa **SQL** como backend
 2. Resetea la base de datos
-3. Genera el script desde las tripletas
-4. Ejecuta las sentencias en SQLite
+3. Ejecuta en **modo Híbrido** (determinista + LLM para sobrantes)
+4. Genera y ejecuta el script en SQLite
 
 ---
 
 ### 🧩 Parámetros disponibles
 
-| Parámetro         | Descripción                                                                             | Valor por defecto          | Ejemplo                                           |
-| ----------------- | --------------------------------------------------------------------------------------- | -------------------------- | ------------------------------------------------- |
-| `--bd`            | Backend de salida: `neo4j` o `sql`                                                      | `sql`                      | `--bd neo4j`                                      |
-| `--sqlite-db`     | Ruta del fichero SQLite (solo si `--bd=sql`)                                            | `./data/users/demo.sqlite` | `--sqlite-db ./data/test.sqlite`                  |
-| `--no-reset`      | No resetear la BD antes de crear esquema                                                | *Resetea por defecto*      | `--no-reset`                                      |
-| `--hybrid`        | Usa modo híbrido: primero **determinista** y las tripletas fuera de esquema pasan a LLM | *Desactivado*              | `--hybrid`                                        |
-| `--triplets-json` | Cargar tripletas desde JSON inline                                                      | `None`                     | `--triplets-json '[["Ana","padece","insomnio"]]'` |
-| `--triplets-file` | Cargar tripletas desde fichero `.json` o `.txt`                                         | `None`                     | `--triplets-file ./ejemplo.txt`                   |
+| Parámetro         | Descripción                                                                           | Valor por defecto          | Ejemplo                                           |
+| ----------------- | ------------------------------------------------------------------------------------- | -------------------------- | ------------------------------------------------- |
+| `--bd`            | Backend de salida: `neo4j` o `sql`                                                    | `sql`                      | `--bd neo4j`                                      |
+| `--sqlite-db`     | Ruta del fichero SQLite (solo si `--bd=sql`)                                          | `./data/users/demo.sqlite` | `--sqlite-db ./data/test.sqlite`                  |
+| `--no-reset`      | No resetear la BD antes de crear el esquema                                           | *Resetea por defecto*      | `--no-reset`                                      |
+| `--llm`           | **Modo LLM**: ignora el motor determinista y procesa todas las tripletas mediante LLM | *Desactivado*              | `--llm`                                           |
+| `--no-llm`        | **Determinista puro**: nunca usa LLM                                                  | *Desactivado*              | `--no-llm`                                        |
+| `--triplets-json` | Cargar tripletas desde JSON inline                                                    | `None`                     | `--triplets-json '[["Ana","padece","insomnio"]]'` |
+| `--triplets-file` | Cargar tripletas desde fichero `.json` o `.txt` (una tripleta por línea)              | `None`                     | `--triplets-file ./ejemplo.txt`                   |
 
 ---
 
 ### 🧠 Modos de funcionamiento
 
-| Modo                     | Cómo funciona                                                                                  | Cuándo usarlo                                                |
-| ------------------------ | ---------------------------------------------------------------------------------------------- | ------------------------------------------------------------ |
-| **LLM (por defecto)**    | Todas las tripletas se procesan mediante LLM para generar Cypher/SQL                           | Cuando no importa el coste LLM y quieres máxima flexibilidad |
-| **Híbrido (`--hybrid`)** | Primero aplica un mapeo **determinista estricto**; las tripletas fuera de formato pasan al LLM | Para máxima precisión, control y menor consumo de LLM        |
+| Modo                      | Flag         | Cómo funciona                                                                                                                                                                          | Cuándo usarlo                                                               |
+| ------------------------- | ------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------- |
+| **Híbrido (por defecto)** | *(sin flag)* | Aplica mapeo **determinista estricto**; las tripletas que no encajen pasan al **LLM**                                                                                                  | Mejora precisión, reduce coste LLM y mantiene flexibilidad                  |
+| **Solo LLM**              | `--llm`      | Ignora el motor determinista y usa LLM para todas las tripletas                                                                                                                        | Cuando quieres máxima flexibilidad y no te preocupa el coste del LLM        |
+| **Determinista puro**     | `--no-llm`   | No usa LLM. Solo aplica el motor determinista. <br>• En **SQL**: los sobrantes se guardan en la tabla `log` y no se ejecutan <br>• En **Neo4j**: si hay sobrantes, aborta sin ejecutar | Cuando necesitas máxima trazabilidad, reproducibilidad y cero invención LLM |
 
-Flujo del modo híbrido:
+---
+
+Flujo visual de cada modo:
+
+#### Modo Híbrido (por defecto)
 
 ```
-Tripletas → Determinista (estricto) → [válidas] → script
-                    ↓
-             [no compatibles]
-                    ↓
-                 LLM → script extra
+Tripletas → Determinista estricto → [válidas] → script
+                         ↓
+                  [no compatibles]
+                         ↓
+                      LLM → script extra
 ```
+
+#### Modo LLM (`--llm`)
+
+```
+Tripletas → LLM → script
+```
+
+#### Modo Determinista Puro (`--no-llm`)
+
+```
+Tripletas → Determinista estricto → [válidas] → script
+                         ↓
+                  [no compatibles]
+                         ↓
+         SQL: guardar en tabla log
+         Neo4j: abortar ejecución
+```
+
+
 
 
 
