@@ -62,6 +62,7 @@ DEFAULT_CONTEXT = """Eres un extractor de tripletas en ESPAÑOL. Devuelve EXCLUS
 ("Ana García", "toma", "ibuprofeno")
 ("ibuprofeno", "se toma", "cuando duele")
 
+# EJEMPLO NEGATIVO (NO INVENTAR)
 Texto: "Juan realiza X"
 No devuelvas: ("X", "categoria", "X"), no está en el texto la categoria pues eso con todo.
 
