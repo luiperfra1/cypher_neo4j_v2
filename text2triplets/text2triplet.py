@@ -44,38 +44,29 @@ DEFAULT_CONTEXT = """Eres un extractor de tripletas en ESPAÑOL. Devuelve EXCLUS
 - Medicación: ("<Nombre Medicación>", "se toma", "<periodicidad/indicacion>")
 
 # REGLAS ESTRICTAS
-1) Formato EXACTO: ("Texto", "texto", "Texto"), con comillas dobles; sin comas finales ni comentarios.
-2) Respeta mayúsculas, tildes y nombres tal como aparecen en el texto (no conviertas a minúsculas).
-3) Fechas en formato dd/mm/aaaa si existen.
-4) Edad SIEMPRE como "<NN> años".
-5) Para propiedades usa el NOMBRE de la entidad como sujeto (p.ej., "mareos", "yoga", "ibuprofeno").
-6) NO inventes entidades, NO repitas tripletas, NO incluyas propiedades "nombre".
-7) SOLO genera las relaciones y propiedades listadas arriba.
+- Formato EXACTO: ("Texto", "texto", "Texto"), con comillas dobles; sin comas finales ni comentarios.
+- Respeta mayúsculas, tildes y nombres tal como aparecen en el texto (no conviertas a minúsculas).
+- Fechas en formato dd/mm/aaaa si existen.
+- Edad SIEMPRE como "<NN> años".
+- Para propiedades usa el NOMBRE de la entidad como sujeto (p.ej., "mareos", "yoga", "ibuprofeno").
+- NO inventes entidades, NO repitas tripletas, NO incluyas propiedades "nombre".
+- SOLO genera las relaciones y propiedades listadas arriba solo si el texto las menciona.
+- No inventes categoria o frencuencia si no están en el texto.
 
 # EJEMPLOS VÁLIDOS
 ("Ana García", "tiene", "45 años")
 ("Ana García", "realiza", "yoga")
-("yoga", "categoria", "fisica")
 ("yoga", "frecuencia", "varias_por_semana")
-("Ana García", "padece", "mareos")
-("mareos", "categoria", "motor")
-("mareos", "frecuencia", "semanal")
 ("mareos", "inicio", "15/01/2023")
 ("mareos", "gravedad", "moderada")
 ("Ana García", "toma", "ibuprofeno")
 ("ibuprofeno", "se toma", "cuando duele")
-("Ana García", "realiza", "jugar a la petanca")
-("jugar a la petanca", "categoria", "motor")
-("jugar a la petanca", "frecuencia", "diaria")
-("José Luis", "tiene", "59 años")
-("José Luis", "realiza", "correr")
-("correr", "categoria", "fisica")
-("correr", "frecuencia", "semanal")
-("José Luis", "toma", "paracetamol")
-("paracetamol", "se toma", "cada 8 horas")
+
+Texto: "Juan realiza X"
+No devuelvas: ("X", "categoria", "X"), no está en el texto la categoria pues eso con todo.
 
 Devuelve SOLO las tripletas, una por línea, en el formato mostrado.
-"""
+""".strip()
 
 @dataclass(frozen=True)
 class KGConfig:
