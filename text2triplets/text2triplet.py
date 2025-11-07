@@ -188,7 +188,7 @@ def _call_llm_directly(
                     level="ERROR",
                     message="llm call failed",
                     run_id=run_id,
-                    stage="llm_generate",
+                    stage="text2triplet_llm_generate",
                     reason=type(e).__name__,
                     metadata={"error": str(e), "input_preview": str(input_text)[:200]},
                 )

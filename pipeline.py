@@ -32,11 +32,10 @@ CONFIG = {
     "extractor_model": None,   # None = usa el del .env/config del extractor
     "drop_invalid": True,      # si tu extractor soporta descarte en origen
 
-
     # Inyección en BD
     "backend": "sql",              # "neo4j" | "sql"
     "bd_mode": "deterministic",    # "deterministic" | "hybrid" | "llm"
-    "reset": True,                 # True: resetear BD antes de inyectar
+    "reset": True,                 # True: resetear BD antes de inyectar (dominio)
     "sqlite_db_path": "./data/users/demo.sqlite",
 
     # Overrides opcionales:
@@ -141,13 +140,13 @@ def main():
         else:
             raise SystemExit("CONFIG['source'] debe ser 'text', 'triplets' o 'demo'.")
 
-
     # 4) Inyección BD
     opts = EngineOptions(
         backend=cfg["backend"],
         mode=cfg["bd_mode"],           # 'deterministic' | 'hybrid' | 'llm'
         reset=cfg["reset"],
         sqlite_db_path=cfg["sqlite_db_path"],
+        reset_log=False,               # <<< IMPORTANTE: NO resetear el log desde triplets2bd
     )
 
     print("\nInyectando en la BD…")

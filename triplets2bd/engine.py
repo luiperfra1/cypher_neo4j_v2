@@ -134,7 +134,7 @@ def run_triplets_to_bd(triplets: List[Triplet], opts: EngineOptions) -> EngineRe
                             log_sql.conn,
                             leftovers,
                             run_id=run_id,
-                            stage="deterministic_partition",
+                            stage="triplet2bd_deterministic_partition",
                             message="Tripletas no compatibles con determinista (Neo4j)",
                         )
 
@@ -182,7 +182,7 @@ def run_triplets_to_bd(triplets: List[Triplet], opts: EngineOptions) -> EngineRe
                             log_sql.conn,
                             leftovers,
                             run_id=run_id,
-                            stage="deterministic_partition",
+                            stage="triplet2bd_deterministic_partition",
                             message="Tripletas no compatibles con determinista (SQL)",
                         )
 
