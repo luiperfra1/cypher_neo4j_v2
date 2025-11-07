@@ -11,6 +11,7 @@ class EngineOptions:
     backend: Backend = "sql"
     mode: Mode = "hybrid"
     reset: bool = True
+    reset_log: bool = True          # NUEVO: resetear logs por defecto
     sqlite_db_path: str = "./data/users/demo.sqlite"
     generate_report: bool = True
     report_sample_limit: int = 15

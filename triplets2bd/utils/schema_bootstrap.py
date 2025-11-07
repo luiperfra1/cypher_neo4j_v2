@@ -43,9 +43,3 @@ INDEXES = [
 def bootstrap(db: Neo4jClient):
     for cy in CONSTRAINTS + INDEXES:
         db.write(cy, {})
-        db.write("""
-    CREATE CONSTRAINT log_unique_if_not_exists
-    IF NOT EXISTS
-    FOR (l:Log)
-    REQUIRE (l.run_id, l.triplet, l.reason) IS UNIQUE
-    """, {})

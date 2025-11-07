@@ -183,7 +183,6 @@ def reset_sql(conn: Connection) -> None:
         "actividad",
         "sintoma",
         "persona",
-        "log",
     )
     for t in tablas:
         cur.execute(f"DROP TABLE IF EXISTS {t};")
