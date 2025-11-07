@@ -20,7 +20,7 @@ from .utils.sqlite_client import SqliteClient
 from .utils.schema_sqlite_bootstrap import bootstrap_sqlite, reset_sql
 
 # LOG (siempre SQLite; solo fallos)
-from sql_log import (
+from utils.sql_log import (
     ensure_sql_log_table,
     insert_leftovers_log,
     clear_log,      # limpia registros (no borra tabla ni índices)

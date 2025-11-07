@@ -2,7 +2,7 @@
 from typing import List, Tuple, Optional
 from .models import Collector, Entity
 from .helpers import parse_age, normalize_date, cypher_quote
-from constants import PROPERTY_VERBS, RELATION_VERBS
+from utils.constants import PROPERTY_VERBS, RELATION_VERBS
 
 Triplet = Tuple[str, str, str]
 

@@ -6,16 +6,28 @@ import time
 import unicodedata
 import re
 from datetime import datetime
+from triplets2bd.utils.make_sqlite_report import make_content_only_report
 
-from config import settings
+
+from utils.config import settings
+from triplets2bd.utils.sqlite_client import SqliteClient
 from .llm_client import LLMClient, LLMConfig
 # Usa tu constants.py como fuente de verdad
-from constants import (
+from utils.constants import (
     ALLOWED_REL,          # {"padece", "toma", "realiza"}
     ALLOWED_PROP,         # {"categoria", "frecuencia", "gravedad", "inicio", "fin", "se toma", "periodicidad"}
     PROPERTY_VERBS,       # mapeo a nombre normalizado + tipo ("date"/"node")
     RELATION_VERBS,       # {"toma": "persona_toma_medicacion", ...} (para referencia)
     _DATE_FORMATS,        # formatos a intentar
+)
+
+# --- Logging (siempre SQLite; solo fallos) ---
+from utils.sql_log import (
+    ensure_sql_log_table,
+    insert_leftovers_log,  # para registrar descartadas (WARN)
+    clear_log,             # limpieza de registros (no borra la tabla)
+    log_event,             # para registrar errores (ERROR)
+    new_run_id,            # generar run_id en memoria
 )
 
 # ---- Prompt MEJORADO con formato JSON ----
@@ -48,7 +60,7 @@ DEFAULT_CONTEXT = """Eres un extractor de tripletas en ESPAÑOL. Devuelve EXCLUS
 - Respeta mayúsculas, tildes y nombres tal como aparecen en el texto (no conviertas a minúsculas).
 - Fechas en formato dd/mm/aaaa si existen.
 - Edad SIEMPRE como "<NN> años".
-- Para propiedades usa el NOMBRE de la entidad como sujeto (p.ej., "mareos", "yoga", "ibuprofeno").
+- Para propiedades usa el NOMBRE de la entidad como sujeto (p. ej., "mareos", "yoga", "ibuprofeno").
 - NO inventes entidades, NO repitas tripletas, NO incluyas propiedades "nombre".
 - SOLO genera las relaciones y propiedades listadas arriba solo si el texto las menciona.
 - No inventes categoria o frencuencia si no están en el texto.
@@ -152,7 +164,14 @@ def _extract_triplets_from_llm_response(response_text: str) -> List[Tuple[str, s
 
     return triplets
 
-def _call_llm_directly(kg: LLMClient, input_text: str, context: str) -> List[Tuple[str, str, str]]:
+def _call_llm_directly(
+    kg: LLMClient,
+    input_text: str,
+    context: str,
+    *,
+    log_conn=None,
+    run_id: Optional[str] = None,
+) -> List[Tuple[str, str, str]]:
     try:
         response_text = kg.generate(
             input_data=f"Texto: {input_text}\n\nExtrae las tripletas:",
@@ -161,6 +180,20 @@ def _call_llm_directly(kg: LLMClient, input_text: str, context: str) -> List[Tup
         triplets = _extract_triplets_from_llm_response(response_text)
         return triplets
     except Exception as e:
+        # Logueamos solo el error (sin INFO)
+        if log_conn is not None:
+            try:
+                log_event(
+                    log_conn,
+                    level="ERROR",
+                    message="llm call failed",
+                    run_id=run_id,
+                    stage="llm_generate",
+                    reason=type(e).__name__,
+                    metadata={"error": str(e), "input_preview": str(input_text)[:200]},
+                )
+            except Exception:
+                pass
         print(f"[text2triplet] Error llamando al LLM: {e}")
         return []
 
@@ -211,36 +244,108 @@ def run_kg(
     context: str = DEFAULT_CONTEXT,
     cfg: KGConfig | None = None,
     print_triplets: bool = True,
-    drop_invalid: bool = True
+    drop_invalid: bool = True,
+    sqlite_db_path: str = "./data/users/demo.sqlite",
+    reset_log: bool = True,  # mismo comportamiento que engine: limpiar log por defecto
+    # --- AÑADIDOS (informe opcional) ---
+    generate_report: bool = False,
+    report_path: Optional[str] = None,
+    report_sample_limit: int = 15,
 ) -> List[Tuple[str, str, str]]:
+    """
+    Extrae tripletas desde texto usando un LLM y aplica validación básica.
+    Logging:
+      - Solo se guardan fallos: WARN (descartadas) y ERROR (fallo LLM).
+      - El log se limpia por defecto al inicio salvo reset_log=False.
+    Informe:
+      - Si generate_report=True, se crea un informe del contenido de la SQLite indicada.
+    """
     cfg = cfg or KGConfig()
     kg = _make_kg(cfg)
 
-    t0 = time.time()
-    raw_triplets = _call_llm_directly(kg, input_text, context)
-    t1 = time.time()
-    print(f"[text2triplet] LLM completado en {t1 - t0:.2f}s")
-    print(f"[text2triplet] Tripletas crudas extraídas: {len(raw_triplets)}")
+    # Canal de log (siempre SQLite)
+    log_sql = SqliteClient(sqlite_db_path)
+    ensure_sql_log_table(log_sql.conn)
+    try:
+        if reset_log:
+            clear_log(log_sql.conn)
 
-    norm = _normalize_triplets(raw_triplets)
+        # run_id en memoria (solo se escribe si hay fallos)
+        run_id = new_run_id("kg")
 
-    valid, rejected = _partition_valid_invalid(norm, drop_invalid=drop_invalid)
-    t2 = time.time()
+        t0 = time.time()
+        raw_triplets = _call_llm_directly(
+            kg, input_text, context,
+            log_conn=log_sql.conn,
+            run_id=run_id,
+        )
+        t1 = time.time()
+        print("\n=== TEXTO DE ENTRADA ===")
+        print(input_text)
+        print("========================\n")
+        print(f"[text2triplet] LLM completado en {t1 - t0:.2f}s")
+        print(f"[text2triplet] Tripletas crudas extraídas: {len(raw_triplets)}")
 
-    print(f"[text2triplet] Tiempo total: {t2 - t0:.2f}s")
+        norm = _normalize_triplets(raw_triplets)
 
-    if print_triplets:
-        if valid:
-            print("\n=== TRIPLETAS (válidas) ===")
-            for s, r, o in valid:
-                print(f"({s}, {r}, {o})")
-        else:
-            print("\n[text2triplet] No hay tripletas válidas.")
+        valid, rejected = _partition_valid_invalid(norm, drop_invalid=drop_invalid)
+        t2 = time.time()
 
+        print(f"[text2triplet] Tiempo total: {t2 - t0:.2f}s")
+
+        # Solo fallos: registrar descartadas como WARN
         if rejected:
-            print("\n=== DESCARTADAS ===")
-            for (s, r, o), why in rejected:
-                print(f"({s}, {r}, {o})  -> {why}")
-        print()
+            insert_leftovers_log(
+                log_sql.conn,
+                rejected,
+                run_id=run_id,
+                stage="text2triplet_validate",
+                message="Tripletas descartadas por validación",
+            )
 
-    return valid
+        if print_triplets:
+            if valid:
+                print("\n=== TRIPLETAS (válidas) ===")
+                for s, r, o in valid:
+                    print(f"({s}, {r}, {o})")
+            else:
+                print("\n[text2triplet] No hay tripletas válidas.")
+
+            if rejected:
+                print("\n=== DESCARTADAS ===")
+                for (s, r, o), why in rejected:
+                    print(f"({s}, {r}, {o})  -> {why}")
+            print()
+
+        result = valid
+
+    except Exception as exc:
+        # Solo error de ejecución general
+        try:
+            log_event(
+                log_sql.conn,
+                level="ERROR",
+                message="text2triplet run failed",
+                run_id=run_id,
+                stage="end",
+                reason=type(exc).__name__,
+                metadata={"error": str(exc)},
+            )
+        except Exception:
+            pass
+        raise
+    finally:
+        # Cierra el canal de log primero
+        log_sql.close()
+
+    # --- Generación de informe opcional (sin alterar la lógica anterior) ---
+    if generate_report:
+        out_path = report_path if report_path else sqlite_db_path.replace(".sqlite", "_report.txt")
+        make_content_only_report(
+            sqlite_db_path,
+            out_path,
+            sample_limit=report_sample_limit,
+        )
+        print(f"[text2triplet] Informe generado en: {out_path}")
+
+    return result

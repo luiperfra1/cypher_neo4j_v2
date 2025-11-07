@@ -13,7 +13,7 @@ from .helpers import (
     compile_cypher_script,
 )
 
-from constants import (
+from utils.constants import (
     ALLOWED_REL,
     ALLOWED_PROP,
     PROPERTY_VERBS,

@@ -1,7 +1,7 @@
 from __future__ import annotations
 from typing import Any, Iterable
 from neo4j import GraphDatabase, basic_auth
-from config import settings
+from utils.config import settings
 
 class Neo4jClient:
     def __init__(self, uri: str | None = None, user: str | None = None, password: str | None = None):

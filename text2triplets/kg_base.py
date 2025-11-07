@@ -9,10 +9,10 @@ import re
 from datetime import datetime
 
 from kg_gen import KGGen
-from config import settings
+from utils.config import settings
 
 # Usa tu constants.py como fuente de verdad
-from constants import (
+from utils.constants import (
     ALLOWED_REL,          # {"padece", "toma", "realiza"}
     ALLOWED_PROP,         # {"categoria", "frecuencia", "gravedad", "inicio", "fin", "se toma", "periodicidad"}
     PROPERTY_VERBS,       # mapeo a nombre normalizado + tipo ("date"/"node")

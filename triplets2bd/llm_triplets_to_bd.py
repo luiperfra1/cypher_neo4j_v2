@@ -1,7 +1,7 @@
 from __future__ import annotations
 from typing import List, Tuple
 import json, requests, re
-from config import settings
+from utils.config import settings
 
 # Utilidad simple para slug (debe replicarse en el LLM vía instrucciones)
 _slug_re = re.compile(r"[^a-z0-9]+")
