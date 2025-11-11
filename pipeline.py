@@ -32,10 +32,8 @@ CONFIG = {
 
     # Si source=="text"
     "TEXT_KEY": None,  # p. ej. "TEXT1" si existe en ALL_TEXTS
-    "TEXT_RAW": """LLM: ¿Cómo llevas la medicación?
-user_sara: Tomo levotiroxina en ayunas cada mañana.
-LLM: ¿Haces ejercicio?
-user_sara: Hago pilates dos veces por semana.
+    "TEXT_RAW": """ LLM: ¿Tienes algún síntoma o tomas medicación?
+user_javier: No tengo síntomas y no tomo nada ahora mismo.
 """,
 
     # --- Resumen conv2text ---
@@ -199,15 +197,33 @@ def main():
             conv_llm_time_s = conv2text_out.get("conv_llm_s", 0.0)
             conv_total_time_s = conv2text_out.get("conv_total_s", 0.0)
 
-            # Si está habilitado en config, usar el RESUMEN como input del extractor
-            if cfg.get("use_conv2text_for_extractor", True) and conv2text_out.get("summary"):
-                text_for_extractor = conv2text_out["summary"]
-                if cfg.get("print_conv_summary", True):
-                    print("\n[conv2text] El extractor usará el RESUMEN como entrada.")
+            # ============================================
+            # (1bis) Política: si el resumen está vacío → terminar
+            # ============================================
+            if cfg.get("use_conv2text_for_extractor", True):
+                summary_txt = conv2text_out.get("summary")
+                if not summary_txt:
+                    print("\n[conv2text] Resumen vacío → no hay información relevante. Se detiene el pipeline.")
+
+                    # Imprimir tiempos y terminar
+                    total_time_s = time.perf_counter() - t_start_total
+                    print("\n=== TIEMPOS PIPELINE ===")
+                    print(f"Carga del texto: {load_time_s:.3f} s")
+                    if cfg.get("print_conv_summary", False):
+                        print(f"conv2text LLM: {conv_llm_time_s:.3f} s")
+                        print(f"conv2text bloque total: {conv_total_time_s:.3f} s")
+                    print(f"Extracción tripletas: {0.000:.3f} s")
+                    print(f"Inyección BD: {0.000:.3f} s")
+                    print(f"TOTAL: {total_time_s:.3f} s")
+                    return
+                else:
+                    text_for_extractor = summary_txt
+                    if cfg.get("print_conv_summary", True):
+                        print("\n[conv2text] El extractor usará el RESUMEN como entrada.")
             else:
                 text_for_extractor = conversation
                 if cfg.get("print_conv_summary", True):
-                    print("\n[conv2text] El extractor usará la CONVERSACIÓN como entrada (no hay resumen o está desactivado).")
+                    print("\n[conv2text] El extractor usará la CONVERSACIÓN como entrada (conv2text desactivado).")
 
             # (2) Texto → tripletas (extractor) con el TEXTO SELECCIONADO
             t0_extract = time.perf_counter()
@@ -263,6 +279,7 @@ def main():
     print(f"Extracción tripletas: {extract_time_s:.3f} s")
     print(f"Inyección BD: {inject_time_s:.3f} s")
     print(f"TOTAL: {total_time_s:.3f} s")
+
 
 if __name__ == "__main__":
     main()

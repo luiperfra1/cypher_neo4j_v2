@@ -1,7 +1,7 @@
 # triplets2bd/triplets2cypher_rule_based/constants.py
 
 ALLOWED_REL = {"padece", "toma", "realiza"}
-ALLOWED_PROP = {"categoria", "frecuencia", "gravedad", "inicio", "fin", "se toma", "periodicidad"}
+ALLOWED_PROP = {"categoria", "frecuencia", "gravedad", "inicio", "fecha_inicio", "fin", "se toma", "periodicidad"}
 
 PROPERTY_VERBS = {
     "categoria": ("categoria", "node"),

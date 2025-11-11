@@ -2,11 +2,11 @@
 from __future__ import annotations
 from typing import List, Dict
 from .llm_client import LLMClient
-from .prompts import SYSTEM, STYLE_RULES, SCHEMA_HINT, FORMAT
+from .prompts import *
 
-def _build_messages(conversation_text: str) -> List[Dict[str, str]]:
+def _build_messages(conversation_text: str, max_sentences: int = 10):
     user_prompt = (
-        f"{STYLE_RULES}\n\n{SCHEMA_HINT}\n\n{FORMAT}\n\n"
+        f"{build_instruction(max_sentences)}\n\n"
         f"--- CONVERSACIÓN ---\n{conversation_text.strip()}\n--- FIN ---"
     )
     return [
