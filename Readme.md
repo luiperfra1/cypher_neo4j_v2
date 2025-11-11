@@ -12,7 +12,7 @@ El objetivo principal es crear una infraestructura que permita **estructurar y v
 ```bash
 py -3.12 -m venv .venv
 .venv\Scripts\activate
-```
+````
 
 ---
 
@@ -78,7 +78,7 @@ Por defecto:
 3. Filtra tripletas inválidas (a menos que se use `--no-drop`)
 4. Muestra tiempos parciales y resultado final
 
-### Parámetros disponibles
+### Parámetros principales
 
 | Parámetro   | Descripción                                       | Valor por defecto | Ejemplo               |
 | ----------- | ------------------------------------------------- | ----------------- | --------------------- |
@@ -88,6 +88,16 @@ Por defecto:
 | `--context` | Ontología / reglas a aplicar                      | `DEFAULT_CONTEXT` | `--context "..."`     |
 | `--no-drop` | Muestra también tripletas inválidas               | *Desactivado*     | `--no-drop`           |
 
+### Opciones avanzadas (SQLite / Reportes)
+
+| Parámetro               | Descripción                                                   | Valor por defecto          | Ejemplo                           |
+| ----------------------- | ------------------------------------------------------------- | -------------------------- | --------------------------------- |
+| `--sqlite-db`           | Ruta al fichero SQLite usado para almacenar logs o contenido. | `./data/users/demo.sqlite` | `--sqlite-db ./data/test.sqlite`  |
+| `--no-reset-log`        | Evita limpiar la tabla de log antes de comenzar.              | *Desactivado*              | `--no-reset-log`                  |
+| `--generate-report`     | Genera un informe del contenido SQLite al finalizar.          | *Desactivado*              | `--generate-report`               |
+| `--report-path`         | Ruta de salida para guardar el informe generado.              | *Automático*               | `--report-path ./data/report.txt` |
+| `--report-sample-limit` | Número de filas por tabla que se mostrarán en el informe.     | `15`                       | `--report-sample-limit 30`        |
+
 ### Ejemplos
 
 ```bash
@@ -95,6 +105,7 @@ python -m text2triplets.main_kg --text TEXT3
 python -m text2triplets.main_kg --mode kggen --text TEXT3
 python -m text2triplets.main_kg --text TEXT8 --no-drop
 python -m text2triplets.main_kg --text TEXT4 --model qwen2.5:14b
+python -m text2triplets.main_kg --text TEXT3 --generate-report
 ```
 
 ### Textos disponibles (`texts.py`)
@@ -103,6 +114,7 @@ python -m text2triplets.main_kg --text TEXT4 --model qwen2.5:14b
 TEXT1, TEXT2, TEXT3, TEXT4, TEXT5, TEXT6, TEXT7, TEXT8, TEXT9, TEXT10, TEXT11
 ```
 
+---
 
 ## 🚀 5. Ejecutar el `triplets2bd` (Tripletas → Cypher / SQL)
 
@@ -129,6 +141,7 @@ Por defecto:
 | `--bd`            | Backend de salida: `neo4j` o `sql`                                                    | `sql`                      | `--bd neo4j`                                      |
 | `--sqlite-db`     | Ruta del fichero SQLite (solo si `--bd=sql`)                                          | `./data/users/demo.sqlite` | `--sqlite-db ./data/test.sqlite`                  |
 | `--no-reset`      | No resetear la BD antes de crear el esquema                                           | *Resetea por defecto*      | `--no-reset`                                      |
+| `--no-reset-log`  | No limpiar los registros de la tabla de log al inicio                                 | *Limpia por defecto*       | `--no-reset-log`                                  |
 | `--llm`           | **Modo LLM**: ignora el motor determinista y procesa todas las tripletas mediante LLM | *Desactivado*              | `--llm`                                           |
 | `--no-llm`        | **Determinista puro**: nunca usa LLM                                                  | *Desactivado*              | `--no-llm`                                        |
 | `--triplets-json` | Cargar tripletas desde JSON inline                                                    | `None`                     | `--triplets-json '[["Ana","padece","insomnio"]]'` |
@@ -175,9 +188,7 @@ Tripletas → Determinista estricto → [válidas] → script
          Neo4j: abortar ejecución
 ```
 
-
-
-
+---
 
 ### 📄 Reporte automático en modo SQL
 
@@ -191,6 +202,68 @@ Incluye filas por tabla y una muestra de hasta 15 registros por tabla.
 
 ---
 
+## 🗣️ 6. Ejecutar el `conv2text` (Conversación → Resumen textual)
+
+El módulo **`conv2text`** resume una conversación entre un asistente (LLM) y un usuario en **frases breves y explícitas**, adecuadas para el posterior extractor de tripletas.
+Está pensado como paso previo al módulo `text2triplet`, dentro del flujo completo `Conversación → Resumen → Tripletas → BD`.
+
+```bash
+python -m conv2text.main_conv2text --text-key TEXT1
+```
+
+### 🔧 Funcionamiento
+
+1. Detecta automáticamente las líneas del usuario (ej. `user_sara:`).
+2. Genera un resumen textual coherente y explícito con nombres propios incluidos.
+3. Aplica limpieza y límites de frases para garantizar entradas compactas.
+4. Devuelve un resumen listo para ser usado por `text2triplet`.
+
+### ⚙️ Parámetros disponibles
+
+| Parámetro      | Descripción                                               | Valor por defecto | Ejemplo              |
+| -------------- | --------------------------------------------------------- | ----------------- | -------------------- |
+| `--in`         | Ruta del archivo con la conversación (usa `-` para stdin) | `-`               | `--in data/chat.txt` |
+| `--out`        | Ruta del archivo de salida (opcional)                     | *stdout*          | `--out resumen.txt`  |
+| `--text-key`   | Texto predefinido (usa `conv2text/texts.py`)              | `None`            | `--text-key TEXT3`   |
+| `--max`        | Número máximo de frases del resumen                       | `10`              | `--max 8`            |
+| `--temp`       | Temperatura del LLM                                       | `0.0`             | `--temp 0.2`         |
+| `--list-texts` | Lista los textos de ejemplo disponibles y termina         | *Desactivado*     | `--list-texts`       |
+
+### 🧩 Ejemplo de uso
+
+```bash
+python -m conv2text.main_conv2text --text-key TEXT3
+```
+
+Salida típica:
+
+```
+--- CONVERSACIÓN ---
+LLM: ¿Cómo llevas la medicación?
+user_sara: Tomo levotiroxina en ayunas cada mañana.
+LLM: ¿Haces ejercicio?
+user_sara: Hago pilates dos veces por semana.
+
+--- RESUMEN ---
+Sara toma levotiroxina en ayunas cada mañana. Sara hace pilates dos veces por semana.
+
+--- TIEMPOS ---
+Carga del texto: 0.002 s
+LLM: 0.716 s
+Total: 0.719 s
+```
+
+### 💡 Integración con el pipeline general
+
+El pipeline principal (`pipeline.py`) usa este módulo automáticamente si se habilita:
+
+```python
+"use_conv2text_for_extractor": True
+```
+
+Cuando está activado, el extractor (`text2triplet`) utiliza **el resumen** generado por `conv2text` como entrada; si no, emplea la conversación completa.
+
+---
 
 ## 🔄 Flujo completo del sistema
 
@@ -199,7 +272,7 @@ Usuario
    ↓
 Conversación
    ↓
-LLM Extractor (limpieza + resumen canónico)
+conv2text (resumen estructurado)
    ↓
 text2triplet (LLM o KG-Gen)
    ↓
@@ -211,8 +284,6 @@ Cypher / SQL
    ↓
 Neo4j / SQLite
 ```
-
----
 
 ---
 
@@ -233,7 +304,8 @@ py -3.12 -m venv .venv
 .venv\Scripts\activate
 pip install -r requirements.txt
 
-python -m text2triplets.main_kg --text TEXT3
+python -m conv2text.main_conv2text --text-key TEXT3
+python -m text2triplets.main_kg --text TEXT3 --generate-report
 python -m triplets2bd.main_tripletas_bd --bd sql
 
 type data/users/demo_report.txt
@@ -250,6 +322,13 @@ type data/users/demo_report.txt
 ```bash
 python -m triplets2bd.make_sqlite_report data/users/demo.sqlite -o data/users/demo_report.txt
 ```
+
+* El archivo `pipeline.py` permite ejecutar el flujo completo desde una configuración estática (`CONFIG`), incluyendo:
+
+  * Selección de fuente (`source`)
+  * Control de uso de `conv2text` (`use_conv2text_for_extractor`)
+  * Parámetros del resumen (`conv_summary_max_sentences`, `conv_summary_temperature`)
+  * Modo de backend y reinicio de base de datos (`backend`, `reset`)
 
 ---
 
