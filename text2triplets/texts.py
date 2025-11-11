@@ -48,6 +48,7 @@ TEXT11 = (
     "Miguel realiza pilates a diario. "
     "Miguel toma naproxeno cada 8 horas cuando duele."
 )
+TEXT12 =("Sara toma levotiroxina en ayunas cada mañana. Sara hace pilates dos veces por semana.")
 
 
 # Mapa para CLI u otras herramientas
@@ -63,4 +64,5 @@ ALL_TEXTS = {
     "TEXT9": TEXT9,   # plan futuro
     "TEXT10": TEXT10, # alergia (fuera de ontología)
     "TEXT11": TEXT11, # propiedades múltiples + frecuencia + periodicidad
+    "TEXT12": TEXT12, # múltiples oraciones con misma persona
 }
