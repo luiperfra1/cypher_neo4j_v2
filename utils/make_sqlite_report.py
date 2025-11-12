@@ -1,4 +1,4 @@
-# triplets2bd/make_sqlite_report.py
+# utils/make_sqlite_report.py
 from __future__ import annotations
 import argparse
 import os

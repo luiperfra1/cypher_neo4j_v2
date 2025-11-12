@@ -6,7 +6,7 @@ import time
 import unicodedata
 import re
 from datetime import datetime
-from triplets2bd.utils.make_sqlite_report import make_content_only_report
+from utils.make_sqlite_report import make_content_only_report
 
 
 from utils.config import settings

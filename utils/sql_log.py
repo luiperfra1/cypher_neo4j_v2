@@ -1,4 +1,4 @@
-# triplets2bd/utils/sql_log.py
+# utils/sql_log.py
 from __future__ import annotations
 import time
 import json

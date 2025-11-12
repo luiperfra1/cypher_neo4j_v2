@@ -17,69 +17,44 @@ from .llm_triplets_to_bd import bd_from_triplets
 from .utils.neo4j_client import Neo4jClient
 from .utils.schema_bootstrap import bootstrap as bootstrap_neo4j
 from .utils.sqlite_client import SqliteClient
-from .utils.schema_sqlite_bootstrap import bootstrap_sqlite, reset_sql
+from .utils.schema_sqlite_bootstrap import bootstrap_sqlite
 
 # LOG (siempre SQLite; solo fallos)
 from utils.sql_log import (
     ensure_sql_log_table,
     insert_leftovers_log,
     clear_log,      # limpia registros (no borra tabla ni índices)
-    log_event,      # para registrar ERROR o avisos de reset fallido
+    log_event,      # para registrar ERROR o avisos
     new_run_id,     # generamos run_id en memoria (no se persiste si no hay fallos)
 )
 
 # Reporte
-from .utils.make_sqlite_report import make_content_only_report
+from utils.make_sqlite_report import make_content_only_report
+
+# Reset de dominio (EXTERNO)
+# - reset_domain_sqlite(sqlite_db_path) -> bool
+# - reset_domain_neo4j(uri, user, password, database=None) -> bool
+try:
+    from utils.reset import reset_domain_sqlite, reset_domain_neo4j  # type: ignore
+except Exception:
+    reset_domain_sqlite = None  # type: ignore
+    reset_domain_neo4j = None  # type: ignore
 
 
-def _safe_reset_neo4j(log_conn, run_id: str) -> None:
-    """
-    Intenta resetear Neo4j. Si falla, registra un WARN en el log y continúa.
-    """
+def _warn_reset_failure(log_conn, run_id: str, target: str, exc: Exception | None = None) -> None:
+    """Emite un WARN de fallo de reset (sin interrumpir la ejecución)."""
     try:
-        db = Neo4jClient()
-        try:
-            db.write("MATCH (n) DETACH DELETE n", {})
-        finally:
-            db.close()
-    except Exception as e:
-        try:
-            log_event(
-                log_conn,
-                level="WARN",
-                message="neo4j reset failed",
-                run_id=run_id,
-                stage="reset",
-                reason=type(e).__name__,
-                metadata={"error": str(e)},
-            )
-        except Exception:
-            pass  # no interrumpir por fallo de log
-
-
-def _safe_reset_sqlite_domain(sqlite_path: str, log_conn, run_id: str) -> None:
-    """
-    Intenta resetear las tablas de dominio en SQLite. Si falla, registra WARN y continúa.
-    """
-    try:
-        sql = SqliteClient(sqlite_path)
-        try:
-            reset_sql(sql.conn)           # importante: que NO borre la tabla de log
-        finally:
-            sql.close()
-    except Exception as e:
-        try:
-            log_event(
-                log_conn,
-                level="WARN",
-                message="sqlite domain reset failed",
-                run_id=run_id,
-                stage="reset",
-                reason=type(e).__name__,
-                metadata={"error": str(e), "sqlite_db_path": sqlite_path},
-            )
-        except Exception:
-            pass
+        log_event(
+            log_conn,
+            level="WARN",
+            message=f"{target} reset failed",
+            run_id=run_id,
+            stage="reset",
+            reason=type(exc).__name__ if exc else "unknown",
+            metadata={"error": (str(exc) if exc else None)},
+        )
+    except Exception:
+        pass  # nunca romper por el log
 
 
 def run_triplets_to_bd(triplets: List[Triplet], opts: EngineOptions) -> EngineResult:
@@ -95,20 +70,41 @@ def run_triplets_to_bd(triplets: List[Triplet], opts: EngineOptions) -> EngineRe
     ensure_sql_log_table(log_sql.conn)
 
     try:
-        # Limpieza por defecto SOLO de registros (no borra la tabla ni índices)
+        # Limpieza opcional SOLO de registros de log (no borra la tabla ni índices)
         if opts.reset_log:
             clear_log(log_sql.conn)
 
-        # Generar run_id en memoria (no se registra si no hay fallos)
+        # run_id efímero (no se persiste si no hay avisos/errores)
         run_id = new_run_id("run")
 
         # ======================================================
-        # RESET CRUZADO DE AMBAS BDs SI SE SOLICITA
+        # RESET DE DOMINIO (vía reset.py) SI SE SOLICITA
         # ======================================================
         if opts.reset:
-            # Resetear Neo4j y SQLite de dominio SIEMPRE, independientemente del backend activo
-            _safe_reset_neo4j(log_sql.conn, run_id)
-            _safe_reset_sqlite_domain(opts.sqlite_db_path, log_sql.conn, run_id)
+            # Resetear Neo4j (si existe función en reset.py)
+            if reset_domain_neo4j is not None:
+                try:
+                    # Si tu reset.py requiere credenciales, adáptalo a tu proyecto
+                    ok_neo = reset_domain_neo4j(
+                        uri=None, user=None, password=None, database=None  # type: ignore[arg-type]
+                    )
+                    if not ok_neo:
+                        _warn_reset_failure(log_sql.conn, run_id, "neo4j")
+                except Exception as e:
+                    _warn_reset_failure(log_sql.conn, run_id, "neo4j", e)
+            else:
+                _warn_reset_failure(log_sql.conn, run_id, "neo4j", None)
+
+            # Resetear SQLite de dominio (si existe función en reset.py)
+            if reset_domain_sqlite is not None:
+                try:
+                    ok_sql = reset_domain_sqlite(opts.sqlite_db_path)  # type: ignore[misc]
+                    if not ok_sql:
+                        _warn_reset_failure(log_sql.conn, run_id, "sqlite domain")
+                except Exception as e:
+                    _warn_reset_failure(log_sql.conn, run_id, "sqlite domain", e)
+            else:
+                _warn_reset_failure(log_sql.conn, run_id, "sqlite domain", None)
 
         # ======================================================
         # BACKEND NEO4J
@@ -116,7 +112,7 @@ def run_triplets_to_bd(triplets: List[Triplet], opts: EngineOptions) -> EngineRe
         if opts.backend == "neo4j":
             db = Neo4jClient()
             try:
-                # Tras reset cruzado, crear constraints/índices
+                # Tras reset de dominio, crear constraints/índices
                 bootstrap_neo4j(db)
 
                 # Modo
@@ -128,7 +124,7 @@ def run_triplets_to_bd(triplets: List[Triplet], opts: EngineOptions) -> EngineRe
                     supported, leftovers = partition_cypher(triplets)
                     det_script = compile_cypher_script(supported).strip()
 
-                    # Registrar leftovers siempre en SQLite (WARN)
+                    # Registrar leftovers siempre en SQLite (nivel WARN)
                     if leftovers:
                         insert_leftovers_log(
                             log_sql.conn,
@@ -164,7 +160,7 @@ def run_triplets_to_bd(triplets: List[Triplet], opts: EngineOptions) -> EngineRe
         else:
             sql = SqliteClient(opts.sqlite_db_path)
             try:
-                # Tras reset cruzado, bootstrap de tablas de dominio
+                # Tras reset de dominio, bootstrap de tablas de negocio
                 bootstrap_sqlite(sql.conn)
 
                 # Modo
@@ -176,7 +172,7 @@ def run_triplets_to_bd(triplets: List[Triplet], opts: EngineOptions) -> EngineRe
                     supported, leftovers = partition_sql(triplets)
                     det_script = compile_sql_script(supported).strip()
 
-                    # Registrar leftovers siempre en SQLite (WARN)
+                    # Registrar leftovers siempre en SQLite (nivel WARN)
                     if leftovers:
                         insert_leftovers_log(
                             log_sql.conn,
@@ -224,7 +220,7 @@ def run_triplets_to_bd(triplets: List[Triplet], opts: EngineOptions) -> EngineRe
         log_sql.close()
 
     # ------------------------------------------------------------------
-    # GENERAR INFORME EN AMBOS BACKENDS (si se solicita)
+    # GENERAR INFORME (si se solicita)
     # ------------------------------------------------------------------
     if opts.generate_report:
         report_path = (
