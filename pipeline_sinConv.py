@@ -1,11 +1,13 @@
 # pipeline.py
 from __future__ import annotations
-
+import os
 import time
-from typing import List, Tuple, Optional, Dict, Any
+from typing import List, Tuple, Optional
 
 from triplets2bd.engine import run_triplets_to_bd
 from triplets2bd.utils.types import EngineOptions
+from utils.reset import reset_domain_sqlite, reset_domain_neo4j
+from utils.sql_log import ensure_sql_log_table, clear_log
 
 try:
     from text2triplets.texts import ALL_TEXTS
@@ -17,72 +19,43 @@ try:
 except Exception:
     summarize_conv_text = None
 
-
 Triplet = Tuple[str, str, str]
 
-PIPELINE_LOG_PATH = "./pipelines/pipeline.txt"
-
-
-# =========================
-# CONFIGURACIÓN PIPELINE
-# =========================
-CONFIG: Dict[str, Any] = {
+CONFIG = {
     "source": "text",
-
-    # Selección de texto
     "TEXT_KEY": None,
     "TEXT_RAW": """
 LLM: ¿Sigues alguna rutina de ejercicio o alimentación?
 user_ernesto: Intento comer sano entre semana, aunque los fines de semana suelo comer fuera. Practico yoga una vez a la semana y a veces salgo en bici con un amigo los domingos, pero no siempre.
 He pensado en apuntarme a natación, aunque me cuesta organizarme.
 """,
-
-    # Conv → texto resumen
     "print_conv_summary": True,
     "conv_summary_max_sentences": 10,
     "conv_summary_temperature": 0.0,
     "use_conv2text_for_extractor": True,
-
-    # Extractor de tripletas
     "extractor_mode": "llm",
     "extractor_model": None,
     "drop_invalid": True,
-
-    # Backend de inyección
     "backend": "sql",
     "bd_mode": "deterministic",
-    "reset": False,  # ESTE FLAG YA NO SE USA AQUÍ
-
-    # SQLite
+    "reset": True,
     "sqlite_db_path": "./data/users/demo.sqlite",
-
-    # Neo4j (no se usan aquí, pero se dejan por compatibilidad)
     "neo4j_uri": None,
     "neo4j_user": None,
     "neo4j_password": None,
     "neo4j_database": None,
-
-    # Alternativas de entrada por tripletas (no usadas en este flujo)
     "triplets_json_str": None,
     "triplets_file_path": None,
 }
 
 
-# =========================
-# HELPERS
-# =========================
-def _load_from_overrides(
-    json_str: Optional[str],
-    file_path: Optional[str],
-) -> Optional[List[Triplet]]:
+def _load_from_overrides(json_str: Optional[str], file_path: Optional[str]) -> Optional[List[Triplet]]:
     if json_str:
         from triplets2bd.utils.io import load_triplets_from_json_str
         return load_triplets_from_json_str(json_str)
-
     if file_path:
         from triplets2bd.utils.io import load_triplets_from_file
         return load_triplets_from_file(file_path)
-
     return None
 
 
@@ -98,9 +71,7 @@ def _extract_triplets(
         from text2triplets.kg_base import run_kg, KGConfig, DEFAULT_CONTEXT
     else:
         from text2triplets.text2triplet import run_kg, KGConfig, DEFAULT_CONTEXT
-
     cfg = KGConfig(model=model) if model else None
-
     return run_kg(
         input_text=text,
         context=DEFAULT_CONTEXT,
@@ -112,184 +83,145 @@ def _extract_triplets(
     )
 
 
-def _maybe_conv2text(
-    conversation_text: str,
-    max_sentences: int,
-    temperature: float,
-    log,
-) -> Dict[str, Any]:
-    """
-    Genera un resumen con conv2text (si está disponible) y lo deja en el log.
-    """
-    out: Dict[str, Any] = {
-        "summary": None,
-        "conv_llm_s": 0.0,
-        "conv_total_s": 0.0,
-    }
-
+def _maybe_conv2text(conversation_text: str, max_sentences: int, temperature: float) -> dict:
+    out = {"summary": None, "conv_llm_s": 0.0, "conv_total_s": 0.0}
     if not summarize_conv_text:
         return out
-
     try:
         start_total = time.perf_counter()
         start_llm = time.perf_counter()
-
         summary = summarize_conv_text(
             conversation_text=conversation_text,
             max_sentences=max_sentences,
             temperature=temperature,
         )
-
         out["conv_llm_s"] = time.perf_counter() - start_llm
         out["conv_total_s"] = time.perf_counter() - start_total
         out["summary"] = (summary or "").strip() or None
-
-        if out["summary"]:
-            log("\n--- RESUMEN CONV2TEXT ---")
-            log(out["summary"])
-            log("-------------------------")
-
     except Exception as e:
-        log(f"[conv2text] Aviso: no se pudo generar el resumen ({e}).")
-
+        print(f"[conv2text] Aviso: no se pudo generar el resumen ({e}).")
     return out
 
 
-def _get_conversation_text(cfg: Dict[str, Any]) -> str:
-    if cfg["TEXT_KEY"]:
-        return ALL_TEXTS.get(cfg["TEXT_KEY"], cfg["TEXT_RAW"])
-    return cfg["TEXT_RAW"]
+def _reset_all_at_start(sqlite_db_path: str, cfg: dict) -> None:
+    try:
+        from triplets2bd.utils.sqlite_client import SqliteClient
+        db = SqliteClient(sqlite_db_path)
+        ensure_sql_log_table(db.conn)
+        cleared = clear_log(db.conn)
+        db.close()
+        print(f"[reset] LOG: limpiadas {cleared} filas.")
+    except Exception as e:
+        print(f"[reset] Aviso: no se pudo limpiar la tabla 'log' ({e}).")
+
+    try:
+        ok_sql = reset_domain_sqlite(sqlite_db_path)
+        print(f"[reset] Dominio SQLite: {'OK' if ok_sql else 'NO-OP/FAIL'}")
+    except Exception as e:
+        print(f"[reset] Aviso: fallo reseteando dominio SQLite ({e}).")
+
+    try:
+        uri = cfg.get("neo4j_uri") or os.getenv("NEO4J_URI")
+        user = cfg.get("neo4j_user") or os.getenv("NEO4J_USER")
+        pwd = cfg.get("neo4j_password") or os.getenv("NEO4J_PASSWORD")
+        if uri and user and pwd:
+            ok_neo = reset_domain_neo4j(uri=uri, user=user, password=pwd)
+            print(f"[reset] Dominio Neo4j: {'OK' if ok_neo else 'NO-OP/FAIL'}")
+        else:
+            print("[reset] Neo4j: credenciales no definidas.")
+    except Exception as e:
+        print(f"[reset] Aviso: fallo reseteando dominio Neo4j ({e!r}).")
 
 
-def _flush_pipeline_log(lines: List[str]) -> None:
-    text = "\n".join(lines)
-    with open(PIPELINE_LOG_PATH, "w", encoding="utf-8") as f:
-        f.write(text)
-
-
-# =========================
-# MAIN
-# =========================
-def main() -> None:
+def main():
     cfg = CONFIG
-
-    log_lines: List[str] = []
-
-    def log(msg: str) -> None:
-        log_lines.append(str(msg))
-
-    log("=== PIPELINE: Texto Resumen → Tripletas → BD ===")
-    log(
-        f"Fuente={cfg['source']} | extractor={cfg['extractor_mode']} | backend={cfg['backend']} | "
-        f"modo BD={cfg['bd_mode']} | reset={'sí' if cfg.get('reset') else 'no'}"
-    )
+    print("=== PIPELINE: Texto Resumen → Tripletas → BD ===")
+    print(f"Fuente={cfg['source']} | extractor={cfg['extractor_mode']} | backend={cfg['backend']} | modo BD={cfg['bd_mode']} | reset={'sí' if cfg['reset'] else 'no'}")
 
     t_start_total = time.perf_counter()
+    load_time_s = conv_llm_time_s = conv_total_time_s = extract_time_s = inject_time_s = 0.0
 
-    load_time_s = 0.0  # reservado por si en el futuro se añade carga desde disco/red
-    conv_llm_time_s = 0.0
-    conv_total_time_s = 0.0
-    extract_time_s = 0.0
-    inject_time_s = 0.0
+    if cfg.get("reset", False):
+        _reset_all_at_start(cfg["sqlite_db_path"], cfg)
 
-    # --- 1) Obtener conversación de entrada ---
-    conversation = _get_conversation_text(cfg)
-    log("\nEntrada: TEXT_RAW:\n")
-    log(conversation)
+    conversation = cfg["TEXT_RAW"] if not cfg["TEXT_KEY"] else ALL_TEXTS.get(cfg["TEXT_KEY"], cfg["TEXT_RAW"])
+    print("\nEntrada: TEXT_RAW:\n", conversation)
 
-    # --- 2) conv2text: obtener resumen (si está disponible) ---
+    t0 = time.perf_counter()
     conv2text_out = _maybe_conv2text(
         conversation_text=conversation,
         max_sentences=cfg.get("conv_summary_max_sentences", 10),
         temperature=cfg.get("conv_summary_temperature", 0.0),
-        log=log,
     )
-
     conv_llm_time_s = conv2text_out.get("conv_llm_s", 0.0)
     conv_total_time_s = conv2text_out.get("conv_total_s", 0.0)
     summary_txt = conv2text_out.get("summary")
 
-    # --- 3) Elegir texto de entrada para el extractor ---
     if cfg.get("use_conv2text_for_extractor", True):
         if not summary_txt:
-            log("\n[conv2text] Resumen vacío. Se detiene el pipeline.")
-            _flush_pipeline_log(log_lines)
+            print("\n[conv2text] Resumen vacío. Se detiene el pipeline.")
             return
-
         text_for_extractor = summary_txt
-
         if cfg.get("print_conv_summary", True):
-            log("\n[conv2text] El extractor usará el RESUMEN como entrada.")
+            print("\n[conv2text] El extractor usará el RESUMEN como entrada.")
     else:
         text_for_extractor = conversation
-
         if cfg.get("print_conv_summary", True):
-            log("\n[conv2text] El extractor usará la CONVERSACIÓN como entrada.")
+            print("\n[conv2text] El extractor usará la CONVERSACIÓN como entrada.")
 
-    # Bloque equivalente a lo que antes veías por pantalla:
-    log("\n=== TEXTO DE ENTRADA PARA EXTRACTOR ===")
-    log(text_for_extractor)
-    log("========================================")
-
-    # --- 4) text2triplet: extracción de tripletas ---
     t0 = time.perf_counter()
     triplets_in = _extract_triplets(
         text=text_for_extractor,
         extractor=cfg["extractor_mode"],
         model=cfg["extractor_model"],
         drop_invalid=cfg["drop_invalid"],
-        print_triplets=False,  # no queremos prints en consola
+        print_triplets=True,
         sqlite_db_path=cfg["sqlite_db_path"],
     )
     extract_time_s = time.perf_counter() - t0
-    log(f"\nExtracción completada en {extract_time_s:.2f}s")
+    print(f"\nExtracción completada en {extract_time_s:.2f}s")
 
-    # --- 5) Inyección en BD (triplets2bd) ---
     opts = EngineOptions(
         backend=cfg["backend"],
         mode=cfg["bd_mode"],
-        reset=False,           # el reset ya no se hace aquí
+        reset=False,
         sqlite_db_path=cfg["sqlite_db_path"],
-        reset_log=False,       # el log se gestiona fuera (en pipeline_conv)
+        reset_log=False,
     )
 
-    log("\nInyectando en la BD…")
+    print("\nInyectando en la BD…")
     t0 = time.perf_counter()
     res = run_triplets_to_bd(triplets_in, opts)
     inject_time_s = time.perf_counter() - t0
 
-    log("\n=== RESULTADO BD ===")
-    log(
-        f"Backend={res.backend} | modo={res.mode} | reset={'sí' if res.reset else 'no'} "
+    print("\n=== RESULTADO BD ===")
+    print(f"Backend={res.backend} | modo={res.mode} | reset={'sí' if res.reset else 'no'} "
         f"| run_id={getattr(res, 'run_id', None)} | ejecutadas={res.executed_statements} "
-        f"| tiempo={inject_time_s:.2f}s"
-    )
+        f"| tiempo={inject_time_s:.2f}s")
 
-    # --- Mostrar scripts ejecutados (si existen) ---
+    # --- NUEVO BLOQUE: mostrar scripts ejecutados ---
     if getattr(res, "det_script", None):
-        log("\n─── Script determinista ejecutado ───")
-        log(res.det_script.strip())
+        print("\n─── Script determinista ejecutado ───")
+        print(res.det_script.strip())
 
     if getattr(res, "llm_script", None):
-        log("\n─── Script LLM (adicional) ───")
-        log(res.llm_script.strip())
+        print("\n─── Script LLM (adicional) ───")
+        print(res.llm_script.strip())
 
     if getattr(res, "leftovers", None):
-        log("\n─── Tripletas sobrantes (no ejecutadas) ───")
+        print("\n─── Tripletas sobrantes (no ejecutadas) ───")
         for (s, v, o), reason in res.leftovers:
-            log(f"({s}, {v}, {o}) -> {reason}")
+            print(f"({s}, {v}, {o}) -> {reason}")
+    # -----------------------------------------------
 
-    # --- 6) Resumen de tiempos ---
     total_time_s = time.perf_counter() - t_start_total
+    print("\n=== TIEMPOS PIPELINE ===")
+    print(f"conv2text (LLM):       {conv_llm_time_s:.3f} s")
+    print(f"conv2text (bloque):    {conv_total_time_s:.3f} s")
+    print(f"text2triplet:          {extract_time_s:.3f} s")
+    print(f"Inyección BD:          {inject_time_s:.3f} s")
+    print(f"TOTAL:                 {total_time_s:.3f} s")
 
-    log("\n=== TIEMPOS PIPELINE ===")
-    log(f"conv2text (LLM):       {conv_llm_time_s:.3f} s")
-    log(f"conv2text (bloque):    {conv_total_time_s:.3f} s")
-    log(f"text2triplet:          {extract_time_s:.3f} s")
-    log(f"Inyección BD:          {inject_time_s:.3f} s")
-    log(f"TOTAL:                 {total_time_s:.3f} s")
-
-    _flush_pipeline_log(log_lines)
 
 
 if __name__ == "__main__":

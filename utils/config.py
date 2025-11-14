@@ -17,6 +17,8 @@ class Settings:
     MODEL_TRIPLETAS_CYPHER: str | None = os.getenv("MODEL_TRIPLETAS_CYPHER")
     MODEL_KG_GEN: str | None = os.getenv("MODEL_KG_GEN")
     MODEL_CONV2TEXT: str | None = os.getenv("MODEL_CONV2TEXT")
+    MODEL_CONV: str = os.getenv("MODEL_CONV", "qwen2.5:32b")
+    LLAMUS_BACKEND: str = os.getenv("LLAMUS_BACKEND", "OPENAI")
 
     USER_BASE_ID: str = os.getenv("USER_BASE_ID", "P001")
 
