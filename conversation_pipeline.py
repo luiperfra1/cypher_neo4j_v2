@@ -7,7 +7,7 @@ import os
 from conv.engine import start_conversation, conversation_turn
 
 # --- Pipeline principal (SIN resets ni prints) ---
-from pipeline import CONFIG, main as run_pipeline
+from processing_pipeline import CONFIG, main as run_pipeline
 
 # --- Utils para resetear dominios y logs (solo aquí) ---
 from utils.reset import reset_domain_sqlite, reset_domain_neo4j
